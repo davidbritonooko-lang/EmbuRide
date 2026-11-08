@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,8 +26,7 @@ export async function signUpAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const { data, error } = await supabase.auth.signUp({
     email,
