@@ -9,9 +9,21 @@ export default async function ApplyDriverPage() {
   const user = await requireUserContext();
   if (user.role === "admin") redirect("/dashboard");
 
-  if (user.driverVerificationStatus) {
+  if (user.driverVerificationStatus === "verified" || user.driverVerificationStatus === "suspended") {
     redirect("/driver");
   }
+
+  const supabase = await createClient();
+  const { data: documentRows } = await supabase.from("driver_documents")
+    .select("document_type, verification_status, created_at")
+    .eq("driver_id", user.id)
+    .order("created_at", { ascending: false });
+  const latestDocuments = new Map<string, string>();
+  for (const document of documentRows ?? []) {
+    if (!latestDocuments.has(document.document_type)) latestDocuments.set(document.document_type, document.verification_status);
+  }
+  const initialDocuments = [...latestDocuments.keys()] as ("national_id" | "driving_licence" | "vehicle_registration" | "vehicle_insurance")[];
+  const initialDocumentStatuses = Object.fromEntries(latestDocuments.entries());
 
   return (
     <main className="min-h-dvh bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
