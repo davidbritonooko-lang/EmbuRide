@@ -49,7 +49,7 @@ export function AuthForm({ mode }: Props) {
       <button type="submit" className="w-full rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2">
         {isSignup ? "Create account" : "Sign in"}
       </button>
-      <p className="text-center text-sm text-slate-600">
+      {!isSignup && <p className="text-right text-sm"><Link className="font-semibold text-teal-800 underline-offset-4 hover:underline" href="/forgot-password">Forgot password?</Link></p>}\n      <p className="text-center text-sm text-slate-600">
         {isSignup ? "Already registered? " : "New to EmbuRide? "}
         <Link className="font-semibold text-teal-800 underline-offset-4 hover:underline" href={isSignup ? "/login" : "/signup"}>
           {isSignup ? "Sign in" : "Create an account"}

@@ -42,6 +42,32 @@ export async function signUpAction(formData: FormData) {
   redirect("/check-email");
 }
 
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) redirect("/forgot-password?error=invalid");
+
+  const supabase = await createClient();
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`,
+  });
+  if (error) redirect("/forgot-password?error=request");
+  redirect("/check-reset-email");
+}
+
+export async function updatePasswordAction(formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  if (password.length < 10 || password !== confirmation) {
+    redirect("/auth/update-password?error=invalid");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) redirect("/auth/update-password?error=update");
+  redirect("/dashboard");
+}
+
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
