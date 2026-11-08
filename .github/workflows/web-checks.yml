@@ -1,0 +1,71 @@
+name: Web application checks
+
+on:
+  push:
+    branches: [main, feat/emburide-database-migrations]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify reproducible dependency installation
+        run: npm ci
+      - name: Dependency security audit
+        run: npm audit --audit-level=moderate
+      - name: TypeScript validation
+        run: npm run typecheck
+      - name: ESLint validation
+        run: npm run lint
+      - name: Install Supabase CLI
+        id: setup-supabase-cli
+        uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+      - name: Start isolated local Supabase stack
+        run: supabase start -x studio,inbucket,vector,logflare,edge-runtime
+      - name: Rebuild database from committed migrations
+        run: supabase db reset
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Export local Supabase test environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            printf 'DB_URL=%s\n' "$DB_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$API_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$ANON_KEY"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY"
+            printf '%s\n' 'E2E_PASSWORD=EmbuRide-E2E-Only-2026!'
+            printf '%s\n' 'E2E_PASSENGER_EMAIL=e2e-passenger@example.invalid'
+            printf '%s\n' 'E2E_DRIVER_EMAIL=e2e-driver@example.invalid'
+            printf '%s\n' 'E2E_ADMIN_EMAIL=e2e-admin@example.invalid'
+          } >> "$GITHUB_ENV"
+      - name: Run database workflow and security smoke tests
+        run: npm run test:db
+      - name: Build the production application
+        run: npm run build
+      - name: Seed isolated local authentication accounts
+        run: node scripts/seed-e2e.mjs
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run public and authenticated browser tests
+        run: npm run test:e2e
+      - name: Stop local Supabase stack
+        if: always() && steps.setup-supabase-cli.outcome == 'success'
+        run: supabase stop --no-backup
