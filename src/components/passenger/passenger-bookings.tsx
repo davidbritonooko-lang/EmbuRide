@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { TripLocationMap, type TripLocationPoint } from "@/components/maps/trip-location-map";
 
 type Booking = { id: string; driver_id: string; ride_type: string; passenger_count: number; agreed_fare: number | null; booking_status: string; created_at: string };
 type FareOffer = { id: string; booking_id: string; proposed_by: string; amount: number; message: string | null; offer_status: string; created_at: string };
@@ -12,10 +13,12 @@ type Payment = { id: string; booking_id: string; amount: number; payment_method:
 const contactStatuses = ["confirmed","driver_arriving","picked_up","in_progress"];
 
 export function PassengerBookings({
-  userId, bookings, driverNames, fareOffers, events, payments,
+  userId, bookings, driverNames, fareOffers, events, payments, tripLocations,
 }: {
   userId: string;
   bookings: Booking[];
+  tripLocations: Record<string, TripLocationPoint>;
+  tripLocations: Record<string, TripLocationPoint>;
   driverNames: Record<string,string>;
   fareOffers: FareOffer[];
   events: TripEvent[];
@@ -94,6 +97,7 @@ export function PassengerBookings({
         const bookingEvents = events.filter((event) => event.booking_id === booking.id);
         const bookingPayments = payments.filter((payment) => payment.booking_id === booking.id);
         const contact = contacts[booking.id];
+        const tripLocation = tripLocations[booking.id];
         return (
           <article key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -125,6 +129,26 @@ export function PassengerBookings({
                   <button type="button" disabled={busy === `fare-${booking.id}`} onClick={() => void proposeFare(booking.id)} className="min-h-10 self-end rounded-lg border border-teal-800 px-4 py-2 text-sm font-semibold text-teal-900 hover:bg-teal-50 disabled:opacity-50">Send proposal</button>
                 </div>
               </div>
+            )}
+
+            {contactStatuses.includes(booking.booking_status) && (
+              <section className="mt-4 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Live trip location</h3>
+                {tripLocation ? (
+                  <>
+                    <div className="mt-3">
+                      <TripLocationMap location={tripLocation} />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Last updated {new Date(tripLocation.recordedAt).toLocaleString("en-KE")}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">
+                    The driver has not shared a location yet. The map will appear when live sharing starts.
+                  </p>
+                )}
+              </section>
             )}
 
             {contactStatuses.includes(booking.booking_status) && (
