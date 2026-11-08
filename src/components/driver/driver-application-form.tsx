@@ -22,12 +22,20 @@ export function DriverApplicationForm({ userId, hasApplication = false, initialD
   const [documentStatuses, setDocumentStatuses] = useState<Partial<Record<DocumentType,string>>>(initialDocumentStatuses);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const latestAdultDateOfBirth = new Date();
+  latestAdultDateOfBirth.setFullYear(latestAdultDateOfBirth.getFullYear() - 18);
+  const maxDriverDateOfBirth = [
+    latestAdultDateOfBirth.getFullYear(),
+    String(latestAdultDateOfBirth.getMonth() + 1).padStart(2, "0"),
+    String(latestAdultDateOfBirth.getDate()).padStart(2, "0"),
+  ].join("-");
 
   async function submitApplication(formData: FormData) {
     setError(null);
     setSuccess(null);
     const { error: submitError } = await supabase.rpc("submit_driver_application", {
       p_phone: String(formData.get("phone") ?? "").trim(),
+      p_date_of_birth: String(formData.get("dateOfBirth") ?? ""),
       p_vehicle_make: String(formData.get("make") ?? "").trim(),
       p_vehicle_model: String(formData.get("model") ?? "").trim(),
       p_registration_number: String(formData.get("registration") ?? "").trim(),
@@ -100,6 +108,14 @@ export function DriverApplicationForm({ userId, hasApplication = false, initialD
             <h2 className="text-lg font-bold text-slate-950">Contact and vehicle details</h2>
             <p className="mt-1 text-sm text-slate-600">Your vehicle will remain pending until it has been reviewed by EmbuRide.</p>
           </div>
+          <label className="text-sm font-medium text-slate-700 sm:col-span-2">
+            Date of birth (drivers must be 18 or older)
+            <input name="dateOfBirth" type="date" required max={maxDriverDateOfBirth}
+              className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100" />
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Used only to verify driver eligibility. It is not shown to passengers.
+            </span>
+          </label>
           <label className="text-sm font-medium text-slate-700 sm:col-span-2">
             Phone number
             <input name="phone" type="tel" required minLength={7} maxLength={24} placeholder="+254 7XX XXX XXX"
