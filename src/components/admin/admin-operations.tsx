@@ -39,6 +39,7 @@ export function AdminOperations({
   const canManageAccounts = adminRole === "super_admin";
   const [busy, setBusy] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [accountStatuses, setAccountStatuses] = useState<Record<string, string>>({});
   const [fileLinks, setFileLinks] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
