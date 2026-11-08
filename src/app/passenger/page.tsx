@@ -38,6 +38,10 @@ export default async function PassengerHome() {
           Discover verified drivers nearby and browse upcoming shared rides in Embu County.
         </p>
       </section>
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="font-semibold text-slate-900">Already requested a ride?</p><p className="mt-1 text-sm text-slate-600">View booking status, fare proposals and trip activity.</p></div>
+        <Link href="/passenger/bookings" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">My bookings</Link>
+      </div>
       <div className="flex flex-col gap-3 rounded-xl border border-teal-100 bg-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div><p className="font-semibold text-slate-900">Interested in driving?</p><p className="mt-1 text-sm text-slate-600">Apply to become a verified EmbuRide driver.</p></div>
         <Link href="/apply-driver" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900">Apply to drive</Link>
