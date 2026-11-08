@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { RouteLocationMap, type MapPoint } from "@/components/maps/route-location-map";
 
 type Place = { lat: number; lon: number; label: string };
 type PrivateDriver = {
@@ -44,6 +45,17 @@ async function geocodeEmbuPlace(place: string): Promise<Place> {
   return { lat: Number(results[0].lat), lon: Number(results[0].lon), label: results[0].display_name };
 }
 
+
+async function reverseGeocodeEmbuPoint(lat: number, lon: number): Promise<MapPoint> {
+  const query = new URLSearchParams({ format: "jsonv2", lat: String(lat), lon: String(lon) });
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${query.toString()}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) throw new Error("The selected map location could not be identified. You can still use its coordinates.");
+  const result = (await response.json()) as { display_name?: string };
+  return { lat, lon, label: result.display_name ?? `Selected map point (${lat.toFixed(5)}, ${lon.toFixed(5)})` };
+}
+
 function formatDistance(meters: number) {
   return meters < 1000 ? `${Math.round(meters)} m away` : `${(meters / 1000).toFixed(1)} km away`;
 }
@@ -57,6 +69,9 @@ export function PassengerRouteSearch() {
   const [privateDrivers, setPrivateDrivers] = useState<PrivateDriver[]>([]);
   const [sharedRides, setSharedRides] = useState<SharedRide[]>([]);
   const [places, setPlaces] = useState<{ pickup: Place; destination: Place } | null>(null);
+  const [mapPickup, setMapPickup] = useState<MapPoint | null>(null);
+  const [mapDestination, setMapDestination] = useState<MapPoint | null>(null);
+  const [activeMapField, setActiveMapField] = useState<"pickup" | "destination">("pickup");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [bookingBusy, setBookingBusy] = useState<string | null>(null);
@@ -74,9 +89,9 @@ export function PassengerRouteSearch() {
         throw new Error("Enter both a pickup location and a destination.");
       }
 
-      const pickupPlace = await geocodeEmbuPlace(pickup.trim());
+      const pickupPlace = mapPickup ?? await geocodeEmbuPlace(pickup.trim());
       await new Promise((resolve) => setTimeout(resolve, 1100));
-      const destinationPlace = await geocodeEmbuPlace(destination.trim());
+      const destinationPlace = mapDestination ?? await geocodeEmbuPlace(destination.trim());
       setPlaces({ pickup: pickupPlace, destination: destinationPlace });
 
       const [driverResult, sharedResult] = await Promise.all([
@@ -148,13 +163,13 @@ export function PassengerRouteSearch() {
       <form onSubmit={searchRoute} className="mt-5 grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-medium text-slate-700">
           Pickup location
-          <input value={pickup} onChange={(event) => setPickup(event.target.value)} required minLength={2}
+          <input value={pickup} onChange={(event) => { setPickup(event.target.value); setMapPickup(null); }} required minLength={2}
             placeholder="e.g. Embu Town"
             className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100" />
         </label>
         <label className="text-sm font-medium text-slate-700">
           Destination
-          <input value={destination} onChange={(event) => setDestination(event.target.value)} required minLength={2}
+          <input value={destination} onChange={(event) => { setDestination(event.target.value); setMapDestination(null); }} required minLength={2}
             placeholder="e.g. Runyenjes"
             className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100" />
         </label>
@@ -172,6 +187,58 @@ export function PassengerRouteSearch() {
           </button>
         </div>
       </form>
+
+
+      <div className="mt-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-sm font-semibold text-slate-800">Choose on map:</span>
+          <button type="button" onClick={() => setActiveMapField("pickup")}
+            aria-pressed={activeMapField === "pickup"}
+            className={`min-h-10 rounded-lg px-3 py-2 text-sm font-semibold ${activeMapField === "pickup" ? "bg-teal-800 text-white" : "border border-slate-300 text-slate-700"}`}>
+            Set pickup
+          </button>
+          <button type="button" onClick={() => setActiveMapField("destination")}
+            aria-pressed={activeMapField === "destination"}
+            className={`min-h-10 rounded-lg px-3 py-2 text-sm font-semibold ${activeMapField === "destination" ? "bg-teal-800 text-white" : "border border-slate-300 text-slate-700"}`}>
+            Set destination
+          </button>
+          <button type="button" onClick={() => {
+            if (!navigator.geolocation) { setError("This browser does not support location access."); return; }
+            navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+              const point = { lat: coords.latitude, lon: coords.longitude };
+              setMapPickup(point);
+              setActiveMapField("destination");
+              try {
+                const resolved = await reverseGeocodeEmbuPoint(point.lat, point.lon);
+                setPickup(resolved.label);
+              } catch {
+                setPickup("My current location");
+              }
+            }, () => setError("Your current location could not be determined. Check your browser location permission and try again."), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+          }} className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">
+            Use my location for pickup
+          </button>
+        </div>
+        <RouteLocationMap
+          pickup={mapPickup}
+          destination={mapDestination}
+          onMapPick={(point) => {
+            if (activeMapField === "pickup") {
+              setMapPickup({ ...point, label: "Selected map point" });
+              void reverseGeocodeEmbuPoint(point.lat, point.lon).then((resolved) => {
+                setMapPickup(resolved);
+                setPickup(resolved.label);
+              }).catch(() => setPickup("Selected map point"));
+            } else {
+              setMapDestination({ ...point, label: "Selected map point" });
+              void reverseGeocodeEmbuPoint(point.lat, point.lon).then((resolved) => {
+                setMapDestination(resolved);
+                setDestination(resolved.label);
+              }).catch(() => setDestination("Selected map point"));
+            }
+          }}
+        />
+      </div>
 
       <p className="mt-3 text-xs text-slate-500">Location search uses OpenStreetMap Nominatim. Map data © OpenStreetMap contributors.</p>
       {error && <p role="alert" className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
