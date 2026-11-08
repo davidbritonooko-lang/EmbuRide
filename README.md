@@ -26,9 +26,18 @@ The application uses Next.js App Router, TypeScript, Tailwind CSS, and Supabase 
 
 Never put a Supabase service-role key in a `NEXT_PUBLIC_*` variable or commit it to the repository. The browser and server clients in this stage use only the public publishable key; database access remains governed by RLS.
 
-### Current implementation boundary
+### Current implementation
 
-Stage 4.1 establishes the Next.js application shell and Supabase client utilities. Authentication screens, profile-backed role resolution, and protected passenger/driver/admin routes are subsequent implementation work. Client-provided metadata must not be treated as authorization.
+The application includes email/password authentication flows, database-backed role resolution, protected passenger/driver/admin workspaces, driver onboarding and verification, ride discovery, fare negotiation, booking workflows, and administrator operations. Client-provided metadata is not treated as authorization.
+
+### Maps and location selection
+
+- Passenger route search uses an interactive Leaflet map with OpenStreetMap tiles.
+- Pickup and destination can be entered as Embu County place names or selected directly on the map.
+- Browser location permission can populate the pickup point; location access is user-initiated.
+- Map-selected points are reverse-geocoded with OpenStreetMap Nominatim when available. Coordinates remain usable if a place label cannot be resolved.
+- Nearby-driver and shared-ride searches use the selected coordinates through protected Supabase RPCs. Exact driver presence coordinates are not exposed to passengers.
+- OpenStreetMap and Nominatim usage is subject to their attribution and fair-use policies.
 
 ## Authentication and role routing
 
