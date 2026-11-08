@@ -74,3 +74,4 @@ test("passenger cannot open administrator routes", async ({ page }) => {
   await expect(page).toHaveURL(/\/passenger$/);
   await expect(page.getByRole("heading", { name: "Find your next ride" })).toBeVisible();
 });
+});
