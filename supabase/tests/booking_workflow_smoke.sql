@@ -30,6 +30,13 @@ begin
     -0.5300,37.4500,-0.5400,37.4600,now()+interval '2 hours',3::smallint,250::numeric
   );
   perform set_config('request.jwt.claim.sub','99999999-9999-4999-8999-999999999999',true);
+  begin
+    perform public.create_booking('88888888-8888-4888-8888-888888888888','shared',
+      -0.6000,37.6000,-0.6100,37.6100,1::smallint,v_offer);
+    raise exception 'Shared booking unexpectedly accepted a pickup and destination outside the route corridor';
+  exception when invalid_parameter_value then null;
+  end;
+
   v_shared_booking := public.create_booking('88888888-8888-4888-8888-888888888888','shared',
     -0.5300,37.4500,-0.5400,37.4600,1::smallint,v_offer);
   perform set_config('request.jwt.claim.sub','88888888-8888-4888-8888-888888888888',true);
