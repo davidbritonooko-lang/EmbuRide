@@ -78,10 +78,8 @@ export function DriverWorkspace({
   const presenceWatchIdRef = useRef<number | null>(null);
   const presenceSharingRef = useRef(false);
   const lastPresenceSentAtRef = useRef(0);
-  const lastKnownCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
-  const stopPresenceSharing = useCallback((markOffline = false) => {
-    const wasSharing = presenceSharingRef.current;
+  const stopPresenceSharing = useCallback((markUnavailable = false) => {
     presenceSharingRef.current = false;
     if (presenceWatchIdRef.current !== null && navigator.geolocation) {
       navigator.geolocation.clearWatch(presenceWatchIdRef.current);
@@ -89,17 +87,16 @@ export function DriverWorkspace({
     presenceWatchIdRef.current = null;
     setPresenceSharing(false);
 
-    const coordinates = lastKnownCoordsRef.current;
-    if (markOffline && wasSharing && coordinates) {
-      void Promise.resolve(supabase.rpc("set_driver_presence", {
-        p_latitude: coordinates.latitude,
-        p_longitude: coordinates.longitude,
-        p_destination_latitude: null,
-        p_destination_longitude: null,
-        p_is_online: false,
-      })).then(({ error: presenceError }) => {
-        if (presenceError) setError("The driver presence status could not be cleared.");
-      }).catch(() => setError("The driver presence status could not be cleared."));
+    if (markUnavailable) {
+      void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }))
+        .then(({ error: availabilityError }) => {
+          setAvailable(false);
+          if (availabilityError) setError("Location sharing stopped, but availability could not be cleared. Please retry.");
+        })
+        .catch(() => {
+          setAvailable(false);
+          setError("Location sharing stopped, but the offline status could not be saved.");
+        });
     }
   }, [supabase]);
 
@@ -119,7 +116,6 @@ export function DriverWorkspace({
         ({ coords }) => {
           if (!presenceSharingRef.current) return;
           const coordinates = { latitude: coords.latitude, longitude: coords.longitude };
-          lastKnownCoordsRef.current = coordinates;
           const now = Date.now();
           if (now - lastPresenceSentAtRef.current < 30000) return;
           lastPresenceSentAtRef.current = now;
@@ -224,22 +220,16 @@ export function DriverWorkspace({
       if (presenceWatchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(presenceWatchIdRef.current);
       }
-      const coordinates = lastKnownCoordsRef.current;
-      if (presenceSharingRef.current && coordinates) {
-        void Promise.resolve(supabase.rpc("set_driver_presence", {
-          p_latitude: coordinates.latitude,
-          p_longitude: coordinates.longitude,
-          p_destination_latitude: null,
-          p_destination_longitude: null,
-          p_is_online: false,
-        })).catch(() => undefined);
+      if (available) {
+        void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }))
+          .catch(() => undefined);
       }
       locationWatchIdRef.current = null;
       presenceWatchIdRef.current = null;
       presenceSharingRef.current = false;
       sharingBookingIdRef.current = null;
     };
-  }, [supabase]);
+  }, [available, supabase]);
 
   async function runAction(key: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(key);
