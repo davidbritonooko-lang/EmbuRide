@@ -89,23 +89,24 @@ export function DriverWorkspace({
 
   useEffect(() => {
     const channel = supabase.channel(`driver-bookings-${driverId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `driver_id=eq.${driverId}` }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `driver_id=eq.${driverId}` }, (payload) => {
+        const changedBooking = payload.new as { id?: string; booking_status?: string };
+        if (
+          changedBooking.id === sharingBookingIdRef.current &&
+          !activeStatuses.includes(changedBooking.booking_status ?? "")
+        ) {
+          stopLiveLocation(false);
+          setMessage("Live location sharing stopped because the booking is no longer active.");
+        }
+        router.refresh();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "fare_offers" }, () => router.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "trip_events" }, () => router.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "trip_locations" }, () => router.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "ride_offers" }, () => router.refresh())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [driverId, router, supabase]);
-
-  useEffect(() => {
-    if (!sharingBookingId) return;
-    const activeBooking = bookings.find((booking) => booking.id === sharingBookingId);
-    if (!activeBooking || !activeStatuses.includes(activeBooking.booking_status)) {
-      stopLiveLocation(false);
-      setMessage("Live location sharing stopped because the booking is no longer active.");
-    }
-  }, [bookings, sharingBookingId, stopLiveLocation]);
+  }, [driverId, router, supabase, stopLiveLocation]);
 
   useEffect(() => {
     const stopWhenHidden = () => {
