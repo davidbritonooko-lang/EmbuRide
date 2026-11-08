@@ -9,8 +9,10 @@ Last reviewed: 2026-11-08
 - The 24 authenticated, public-schema `SECURITY DEFINER` RPCs inspected during this review all call `private.require_active_account()` and have a fixed `search_path`.
 - The private active-account helper checks `auth.uid()` and requires the corresponding profile to have `account_status = 'active'`. It is not directly executable by `anon` or `authenticated`.
 - None of the 24 authenticated `SECURITY DEFINER` RPCs is executable by `anon`.
-- The `get_latest_trip_location(uuid)` RPC is `SECURITY INVOKER`, is executable only by authenticated users, checks for an active account, and relies on the existing participant-only RLS policy for `trip_locations`.
-- The trip-location RLS policy permits reads only to the booking's passenger, assigned driver, or an administrator while the booking is in an active status. Completed and cancelled bookings no longer expose their recorded trip locations.
+- The `get_latest_trip_location(uuid)` RPC is `SECURITY INVOKER`, is executable only by authenticated users, checks for an active account, and relies on participant-scoped RLS for `trip_locations`.
+- The private `private.is_driver_presence_fresh(uuid)` helper checks that the caller has an active booking relationship with the driver before returning a presence-freshness boolean. It does not return coordinates and is not in the exposed public API schema.
+- The trip-location RLS policy permits participant reads only while the booking is active, the latest point is less than two minutes old, and the driver's presence is online and fresh. Admins retain access to active-trip records for operational review. Offline/stale points and completed/cancelled bookings are not exposed to ordinary participants.
+- `record_trip_location(uuid,double precision,double precision)` requires the assigned driver to be verified and available; it upserts the private presence row as part of the same operation.
 
 ## Outstanding advisor findings
 
