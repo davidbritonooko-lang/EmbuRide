@@ -27,6 +27,9 @@ async function expectNoHorizontalOverflow(page: Page) {
   }
 }
 
+test.describe("authenticated workspaces", () => {
+  test.describe.configure({ mode: "serial" });
+
 test("passenger authentication, nearby-driver search, and responsive workspace", async ({ page }) => {
   test.skip(!password, "Local E2E credentials are not configured.");
   await page.context().grantPermissions(["geolocation"]);
