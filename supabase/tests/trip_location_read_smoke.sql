@@ -52,6 +52,11 @@ select public.confirm_booking(current_setting('test.booking_id')::uuid);
 select public.record_trip_location(current_setting('test.booking_id')::uuid,-0.5325,37.4525);
 reset role;
 
+-- All statements in this rollback-only fixture share transaction_timestamp().
+update public.trip_locations
+set recorded_at = now() - interval '1 minute'
+where booking_id = current_setting('test.booking_id')::uuid;
+
 do $privileges$
 begin
   if not has_function_privilege('authenticated','public.get_latest_trip_location(uuid)','EXECUTE') then
