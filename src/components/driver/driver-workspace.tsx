@@ -199,11 +199,11 @@ export function DriverWorkspace({
         if (now - lastLocationSentAtRef.current < 15000) return;
         lastLocationSentAtRef.current = now;
 
-        void supabase.rpc("record_trip_location", {
+        void Promise.resolve(supabase.rpc("record_trip_location", {
           p_booking_id: bookingId,
           p_latitude: coords.latitude,
           p_longitude: coords.longitude,
-        }).then(({ error: locationError }) => {
+        })).then(({ error: locationError }) => {
           if (sharingBookingIdRef.current !== bookingId) return;
           setBusy((current) => current === `location-${bookingId}` ? null : current);
           if (locationError) {
