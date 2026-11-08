@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -70,6 +70,17 @@ export function DriverWorkspace({
   const [contacts, setContacts] = useState<Record<string, { name: string; phone: string | null }>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const channel = supabase.channel(`driver-bookings-${driverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `driver_id=eq.${driverId}` }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "fare_offers" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "trip_events" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "trip_locations" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_offers" }, () => router.refresh())
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [driverId, router, supabase]);
 
   async function runAction(key: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(key);
@@ -280,6 +291,18 @@ export function DriverWorkspace({
                           {busy === `contact-${booking.id}` ? "Loading contact…" : "Reveal passenger contact"}
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {["fare_agreed", "confirmed", "driver_arriving", "picked_up", "in_progress"].includes(booking.booking_status) && (
+                    <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
+                      <input aria-label="Reason for cancelling booking" value={reasons[booking.id] ?? ""}
+                        onChange={(event) => setReasons((current) => ({ ...current, [booking.id]: event.target.value }))}
+                        placeholder="Reason for cancelling this booking"
+                        className="min-h-10 flex-1 rounded-lg border border-slate-300 px-3 text-sm" />
+                      <button type="button" disabled={busy === `cancel-${booking.id}` || (reasons[booking.id] ?? "").trim().length < 3}
+                        onClick={() => void runAction(`cancel-${booking.id}`, () => supabase.rpc("cancel_booking", { p_booking_id: booking.id, p_reason: reasons[booking.id] }))}
+                        className="min-h-10 rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50">Cancel booking</button>
                     </div>
                   )}
 
