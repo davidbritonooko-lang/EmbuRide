@@ -1,4 +1,5 @@
-import Link from "next/link";\nimport { redirect } from "next/navigation";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { DriverApplicationForm } from "@/components/driver/driver-application-form";
 import { requireUserContext } from "@/lib/auth/server";
 
