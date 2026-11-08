@@ -11,9 +11,21 @@ values
 ('33333333-3333-4333-8333-333333333333','authenticated','authenticated','driver-age-admin@example.invalid',
  '{"provider":"email","providers":["email"]}'::jsonb,'{"full_name":"Verification Admin Test"}'::jsonb,now(),now(),now());
 
-update public.profiles set date_of_birth = (current_date - interval '17 years')::date
-where id = '11111111-1111-4111-8111-111111111111';
-update public.profiles set date_of_birth = '1990-01-01'
+do $profile_constraint$
+begin
+  begin
+    update public.profiles
+    set date_of_birth = (current_date - interval '17 years')::date
+    where id = '11111111-1111-4111-8111-111111111111';
+    raise exception 'Profiles unexpectedly accepted an underage date of birth';
+  exception when check_violation then
+    null;
+  end;
+end
+$profile_constraint$;
+
+update public.profiles
+set date_of_birth = (current_date - interval '18 years')::date
 where id = '22222222-2222-4222-8222-222222222222';
 update public.profiles set date_of_birth = '1990-01-01'
 where id = '33333333-3333-4333-8333-333333333333';
@@ -86,7 +98,7 @@ begin
   begin
     perform public.submit_driver_application(
       '+254700000222',
-      '1989-01-01'::date,
+      (current_date - interval '19 years')::date,
       'Toyota','Probox','KXX222X','Silver',4::smallint
     );
     raise exception 'Driver changed an already-recorded date of birth';
