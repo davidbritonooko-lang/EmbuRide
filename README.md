@@ -11,3 +11,21 @@ booking and fare transitions.
 
 The MVP uses simulated payment records only. It does not process real payments
 or run background GPS tracking.
+
+## Web application
+
+The application uses Next.js App Router, TypeScript, Tailwind CSS, and Supabase Auth.
+
+### Local setup
+
+1. Install Node.js 20 or later.
+2. Install dependencies with `npm install`.
+3. Copy `.env.example` to `.env.local`.
+4. Set the Supabase project URL and publishable/anon key in `.env.local`.
+5. Start the development server with `npm run dev`.
+
+Never put a Supabase service-role key in a `NEXT_PUBLIC_*` variable or commit it to the repository. The browser and server clients in this stage use only the public anon key; database access remains governed by RLS.
+
+### Current implementation boundary
+
+Stage 4.1 establishes the Next.js application shell and Supabase client utilities. Authentication screens, profile-backed role resolution, and protected passenger/driver/admin routes are subsequent implementation work. Client-provided metadata must not be treated as authorization.
