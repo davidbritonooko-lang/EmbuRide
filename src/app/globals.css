@@ -34,3 +34,4 @@ body {
 }
 .emburide-map-marker__dot--pickup { background: #0f766e; }
 .emburide-map-marker__dot--destination { background: #ea580c; }
+.emburide-map-marker__dot--driver { background: #0f766e; }
