@@ -161,7 +161,8 @@ export function DriverWorkspace({
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
       );
-      presenceWatchIdRef.current = watchId;
+      if (presenceSharingRef.current) presenceWatchIdRef.current = watchId;
+      else navigator.geolocation.clearWatch(watchId);
       return true;
     } catch {
       stopPresenceSharing(false);
@@ -262,8 +263,9 @@ export function DriverWorkspace({
     setAvailable(value);
     if (value) {
       if (!startPresenceSharing()) {
-        await supabase.rpc("set_driver_availability", { p_is_available: false });
+        const { error: rollbackError } = await supabase.rpc("set_driver_availability", { p_is_available: false });
         setAvailable(false);
+        if (rollbackError) setError("Location sharing could not start and availability could not be reset. Please retry.");
       }
     } else {
       stopPresenceSharing(false);
@@ -372,7 +374,11 @@ export function DriverWorkspace({
               onClick={() => {
                 if (!available) void changeAvailability(true);
                 else if (!presenceSharing) {
-                  if (!startPresenceSharing()) setAvailable(false);
+                  if (!startPresenceSharing()) {
+                    void changeAvailability(false).then(() => {
+                      setError("Location sharing is required before nearby-driver discovery can be enabled.");
+                    });
+                  }
                 } else void changeAvailability(false);
               }}
               className={`min-h-11 rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 ${available && presenceSharing ? "bg-emerald-700 hover:bg-emerald-800" : "bg-slate-800 hover:bg-slate-900"}`}>
@@ -380,6 +386,9 @@ export function DriverWorkspace({
             </button>
           )}
         </div>
+        <p className="mt-3 text-xs leading-5 text-slate-500">
+          Nearby search uses your current location to calculate approximate distance. Precise trip location is shared only with confirmed booking participants.
+        </p>
         {error && <p role="alert" className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
         {message && <p role="status" className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{message}</p>}
       </section>
