@@ -83,6 +83,47 @@ begin
 end
 $passenger_read$;
 
+-- Explicitly stopping presence hides the previous point and prevents trip writes.
+select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+select public.set_driver_presence(-0.5325,37.4525,null,null,false);
+
+select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+do $stopped_presence_read$
+begin
+  if exists(
+    select 1 from public.get_latest_trip_location(current_setting('test.booking_id')::uuid)
+  ) then
+    raise exception 'Passenger can still read location after driver explicitly stops sharing';
+  end if;
+end
+$stopped_presence_read$;
+
+select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+do $stopped_presence_write$
+begin
+  begin
+    perform public.record_trip_location(current_setting('test.booking_id')::uuid,-0.5330,37.4530);
+    raise exception 'Trip location write reactivated explicitly stopped presence';
+  exception when insufficient_privilege then
+    null;
+  end;
+end
+$stopped_presence_write$;
+
+select public.set_driver_presence(-0.5330,37.4530,null,null,true);
+select public.record_trip_location(current_setting('test.booking_id')::uuid,-0.5330,37.4530);
+
+select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+do $resumed_after_stop_read$
+begin
+  if not exists(
+    select 1 from public.get_latest_trip_location(current_setting('test.booking_id')::uuid)
+  ) then
+    raise exception 'Passenger cannot read location after driver explicitly resumes sharing';
+  end if;
+end
+$resumed_after_stop_read$;
+
 select set_config('request.jwt.claim.sub','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
 do $stranger_read$
 begin
