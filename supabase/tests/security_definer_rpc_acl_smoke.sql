@@ -46,5 +46,11 @@ begin
   if not has_function_privilege('authenticated','private.is_driver_presence_fresh(uuid)','EXECUTE') then
     raise exception 'Authenticated execution of the private RLS helper is missing';
   end if;
+  if has_table_privilege('authenticated','public.driver_presence','SELECT') then
+    raise exception 'Authenticated users can directly select private driver-presence rows';
+  end if;
+  if (select prosecdef from pg_proc where oid='public.get_latest_trip_location(uuid)'::regprocedure) then
+    raise exception 'The participant trip-location read RPC must remain SECURITY INVOKER';
+  end if;
 end
 $security_review$;
