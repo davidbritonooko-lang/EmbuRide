@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -70,6 +70,10 @@ export function DriverWorkspace({
   const [contacts, setContacts] = useState<Record<string, { name: string; phone: string | null }>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sharingBookingId, setSharingBookingId] = useState<string | null>(null);
+  const locationWatchIdRef = useRef<number | null>(null);
+  const sharingBookingIdRef = useRef<string | null>(null);
+  const lastLocationSentAtRef = useRef(0);
 
   useEffect(() => {
     const channel = supabase.channel(`driver-bookings-${driverId}`)
@@ -81,6 +85,25 @@ export function DriverWorkspace({
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [driverId, router, supabase]);
+
+  useEffect(() => {
+    if (!sharingBookingId) return;
+    const activeBooking = bookings.find((booking) => booking.id === sharingBookingId);
+    if (!activeBooking || !activeStatuses.includes(activeBooking.booking_status)) {
+      stopLiveLocation(false);
+      setMessage("Live location sharing stopped because the booking is no longer active.");
+    }
+  }, [bookings, sharingBookingId]);
+
+  useEffect(() => {
+    return () => {
+      if (locationWatchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(locationWatchIdRef.current);
+      }
+      locationWatchIdRef.current = null;
+      sharingBookingIdRef.current = null;
+    };
+  }, []);
 
   async function runAction(key: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(key);
@@ -99,7 +122,10 @@ export function DriverWorkspace({
 
   async function changeAvailability(value: boolean) {
     const ok = await runAction("availability", () => supabase.rpc("set_driver_availability", { p_is_available: value }));
-    if (ok) setAvailable(value);
+    if (ok) {
+      setAvailable(value);
+      if (!value) stopLiveLocation(false);
+    }
   }
 
   async function proposeFare(bookingId: string) {
@@ -129,29 +155,66 @@ export function DriverWorkspace({
     }));
   }
 
-  async function shareLocation(bookingId: string) {
+  function stopLiveLocation(showMessage = true) {
+    if (locationWatchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(locationWatchIdRef.current);
+    }
+    locationWatchIdRef.current = null;
+    sharingBookingIdRef.current = null;
+    setSharingBookingId(null);
+    setBusy((current) => current?.startsWith("location-") ? null : current);
+    if (showMessage) setMessage("Live location sharing has stopped.");
+  }
+
+  function startLiveLocation(bookingId: string) {
     if (!navigator.geolocation) {
       setError("This browser does not support location sharing.");
       return;
     }
+
+    if (locationWatchIdRef.current !== null) stopLiveLocation(false);
+    sharingBookingIdRef.current = bookingId;
+    lastLocationSentAtRef.current = 0;
+    setSharingBookingId(bookingId);
     setBusy(`location-${bookingId}`);
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const { error: locationError } = await supabase.rpc("record_trip_location", {
+    setError(null);
+    setMessage("Waiting for your current location. Sharing stays active only while this page is open.");
+
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        if (sharingBookingIdRef.current !== bookingId) return;
+        const now = Date.now();
+        if (now - lastLocationSentAtRef.current < 15000) return;
+        lastLocationSentAtRef.current = now;
+
+        void supabase.rpc("record_trip_location", {
           p_booking_id: bookingId,
           p_latitude: coords.latitude,
           p_longitude: coords.longitude,
+        }).then(({ error: locationError }) => {
+          if (sharingBookingIdRef.current !== bookingId) return;
+          setBusy((current) => current === `location-${bookingId}` ? null : current);
+          if (locationError) {
+            stopLiveLocation(false);
+            setError("Live location sharing was stopped because the trip location could not be saved.");
+          } else {
+            setMessage("Live location is being shared with the passenger. Updates are sent at most once every 15 seconds while this page remains open.");
+          }
+        }).catch(() => {
+          if (sharingBookingIdRef.current !== bookingId) return;
+          stopLiveLocation(false);
+          setError("Live location sharing was stopped because the connection failed.");
         });
-        setBusy(null);
-        if (locationError) setError("Your trip location could not be shared.");
-        else setMessage("Your current trip location was shared with the confirmed booking participant.");
       },
       () => {
-        setBusy(null);
+        if (sharingBookingIdRef.current !== bookingId) return;
+        stopLiveLocation(false);
         setError("Location permission was not granted or your current position could not be determined.");
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
+
+    locationWatchIdRef.current = watchId;
   }
 
   const verified = verificationStatus === "verified";
@@ -272,10 +335,12 @@ export function DriverWorkspace({
                         className="min-h-10 rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 disabled:opacity-60">
                         {next === "completed" ? "Complete trip" : `Mark ${next.replaceAll("_", " ")}`}
                       </button>
-                      <button type="button" disabled={busy === `location-${booking.id}`}
-                        onClick={() => shareLocation(booking.id)}
-                        className="min-h-10 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60">
-                        {busy === `location-${booking.id}` ? "Sharing…" : "Share current location"}
+                      <button type="button"
+                        onClick={() => sharingBookingId === booking.id ? stopLiveLocation() : startLiveLocation(booking.id)}
+                        className={`min-h-10 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-60 ${sharingBookingId === booking.id ? "border-rose-300 text-rose-800 hover:bg-rose-50" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
+                        {sharingBookingId === booking.id
+                          ? busy === `location-${booking.id}` ? "Waiting for location…" : "Stop live sharing"
+                          : "Start live location"}
                       </button>
                     </div>
                   )}
