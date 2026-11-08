@@ -205,7 +205,7 @@ export function PassengerRouteSearch() {
           <button type="button" onClick={() => {
             if (!navigator.geolocation) { setError("This browser does not support location access."); return; }
             navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-              const point = { lat: coords.latitude, lon: coords.longitude };
+              const point = { lat: coords.latitude, lon: coords.longitude, label: "My current location" };
               setMapPickup(point);
               setActiveMapField("destination");
               try {
