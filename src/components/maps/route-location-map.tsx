@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 
 export type MapPoint = { lat: number; lon: number; label: string };
@@ -13,6 +13,7 @@ type Props = {
 
 export function RouteLocationMap({ pickup, destination, onMapPick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<{ pickup?: Marker; destination?: Marker }>({});
   const onPickRef = useRef(onMapPick);
@@ -34,6 +35,7 @@ export function RouteLocationMap({ pickup, destination, onMapPick }: Props) {
       });
       createdMap = map;
       mapRef.current = map;
+      setMapReady(true);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
@@ -49,6 +51,7 @@ export function RouteLocationMap({ pickup, destination, onMapPick }: Props) {
       disposed = true;
       if (createdMap) createdMap.remove();
       mapRef.current = null;
+      setMapReady(false);
       markersRef.current = {};
     };
   }, []);
@@ -56,7 +59,7 @@ export function RouteLocationMap({ pickup, destination, onMapPick }: Props) {
   useEffect(() => {
     let disposed = false;
     void import("leaflet").then((L) => {
-      if (disposed || !mapRef.current) return;
+      if (disposed || !mapReady || !mapRef.current) return;
       const map = mapRef.current;
       const markerConfig = (kind: "pickup" | "destination") => L.divIcon({
         className: "emburide-map-marker",
@@ -91,7 +94,7 @@ export function RouteLocationMap({ pickup, destination, onMapPick }: Props) {
       }
     });
     return () => { disposed = true; };
-  }, [pickup, destination]);
+  }, [pickup, destination, mapReady]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">
