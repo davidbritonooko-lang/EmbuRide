@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { RouteLocationMap, type MapPoint } from "@/components/maps/route-location-map";
 
 type Vehicle = { id: string; make: string; model: string; seat_capacity: number };
 type RideOffer = { id: string; departure_time: string; available_seats: number; suggested_fare: number | null; offer_status: string };
@@ -15,12 +16,24 @@ async function findPlace(value: string) {
   return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) };
 }
 
+
+async function reverseFindPlace(lat: number, lon: number): Promise<MapPoint> {
+  const params = new URLSearchParams({ format: "jsonv2", lat: String(lat), lon: String(lon) });
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error("The selected map point could not be identified.");
+  const result = (await response.json()) as { display_name?: string };
+  return { lat, lon, label: result.display_name ?? "Selected map point" };
+}
+
 export function SharedRidePublisher({ vehicles, offers }: { vehicles: Vehicle[]; offers: RideOffer[] }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [vehicleId, setVehicleId] = useState(vehicles[0]?.id ?? "");
   const [origin, setOrigin] = useState("Embu Town");
   const [destination, setDestination] = useState("");
+  const [originPoint, setOriginPoint] = useState<MapPoint | null>(null);
+  const [destinationPoint, setDestinationPoint] = useState<MapPoint | null>(null);
+  const [activeMapField, setActiveMapField] = useState<"origin" | "destination">("origin");
   const [departure, setDeparture] = useState("");
   const [seats, setSeats] = useState("1");
   const [fare, setFare] = useState("");
@@ -43,9 +56,9 @@ export function SharedRidePublisher({ vehicles, offers }: { vehicles: Vehicle[];
     }
     setPublishing(true);
     try {
-      const start = await findPlace(origin.trim());
+      const start = originPoint ? { latitude: originPoint.lat, longitude: originPoint.lon } : await findPlace(origin.trim());
       await new Promise((resolve) => setTimeout(resolve, 1100));
-      const end = await findPlace(destination.trim());
+      const end = destinationPoint ? { latitude: destinationPoint.lat, longitude: destinationPoint.lon } : await findPlace(destination.trim());
       const { error: publishError } = await supabase.rpc("create_shared_ride_offer", {
         p_vehicle_id: vehicleId,
         p_origin_latitude: start.latitude,
@@ -60,7 +73,7 @@ export function SharedRidePublisher({ vehicles, offers }: { vehicles: Vehicle[];
         setError("The shared ride could not be published. Check vehicle approval, departure time and seat count.");
       } else {
         setSuccess("Your shared ride has been published and is discoverable by passengers travelling along this route.");
-        setDestination(""); setDeparture(""); setFare(""); router.refresh();
+        setDestination(""); setDeparture(""); setFare(""); setDestinationPoint(null); router.refresh();
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The shared ride could not be published.");
@@ -81,10 +94,10 @@ export function SharedRidePublisher({ vehicles, offers }: { vehicles: Vehicle[];
           </select>
         </label>
         <label className="text-sm font-medium text-slate-700">Starting point
-          <input value={origin} onChange={(event) => setOrigin(event.target.value)} required minLength={2} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base" />
+          <input value={origin} onChange={(event) => { setOrigin(event.target.value); setOriginPoint(null); }} required minLength={2} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base" />
         </label>
         <label className="text-sm font-medium text-slate-700">Destination
-          <input value={destination} onChange={(event) => setDestination(event.target.value)} required minLength={2} placeholder="e.g. Runyenjes" className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base" />
+          <input value={destination} onChange={(event) => { setDestination(event.target.value); setDestinationPoint(null); }} required minLength={2} placeholder="e.g. Runyenjes" className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base" />
         </label>
         <label className="text-sm font-medium text-slate-700">Departure date and time
           <input type="datetime-local" value={departure} onChange={(event) => setDeparture(event.target.value)} required className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-base" />
@@ -99,6 +112,32 @@ export function SharedRidePublisher({ vehicles, offers }: { vehicles: Vehicle[];
         </label>
         <div className="flex items-end"><button type="submit" disabled={publishing || vehicles.length === 0} className="min-h-11 w-full rounded-xl bg-teal-800 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-900 disabled:opacity-50">{publishing ? "Publishing ride…" : "Publish shared ride"}</button></div>
       </form>
+
+      <div className="mt-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-sm font-semibold text-slate-800">Set route on map:</span>
+          <button type="button" onClick={() => setActiveMapField("origin")} aria-pressed={activeMapField === "origin"}
+            className={`min-h-10 rounded-lg px-3 py-2 text-sm font-semibold ${activeMapField === "origin" ? "bg-teal-800 text-white" : "border border-slate-300 text-slate-700"}`}>Set starting point</button>
+          <button type="button" onClick={() => setActiveMapField("destination")} aria-pressed={activeMapField === "destination"}
+            className={`min-h-10 rounded-lg px-3 py-2 text-sm font-semibold ${activeMapField === "destination" ? "bg-teal-800 text-white" : "border border-slate-300 text-slate-700"}`}>Set destination</button>
+        </div>
+        <RouteLocationMap pickup={originPoint} destination={destinationPoint} onMapPick={(point) => {
+          if (activeMapField === "origin") {
+            setOriginPoint({ ...point, label: "Selected map point" });
+            void reverseFindPlace(point.lat, point.lon).then((resolved) => {
+              setOriginPoint(resolved);
+              setOrigin(resolved.label);
+            }).catch(() => setOrigin("Selected map point"));
+          } else {
+            setDestinationPoint({ ...point, label: "Selected map point" });
+            void reverseFindPlace(point.lat, point.lon).then((resolved) => {
+              setDestinationPoint(resolved);
+              setDestination(resolved.label);
+            }).catch(() => setDestination("Selected map point"));
+          }
+        }} />
+      </div>
+
       <p className="mt-3 text-xs text-slate-500">Location search uses OpenStreetMap Nominatim. Map data © OpenStreetMap contributors.</p>
       {error && <p role="alert" className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
       {success && <p role="status" className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{success}</p>}
