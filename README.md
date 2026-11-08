@@ -29,3 +29,15 @@ Never put a Supabase service-role key in a `NEXT_PUBLIC_*` variable or commit it
 ### Current implementation boundary
 
 Stage 4.1 establishes the Next.js application shell and Supabase client utilities. Authentication screens, profile-backed role resolution, and protected passenger/driver/admin routes are subsequent implementation work. Client-provided metadata must not be treated as authorization.
+
+## Authentication and role routing
+
+- Email/password sign-up and sign-in use Supabase Auth.
+- Email confirmation returns through `/auth/callback`.
+- `/dashboard` resolves the user's role from protected database records.
+- Passenger, driver, and administrator workspaces have server-side role guards.
+- Administrator assignments are read under RLS; users cannot assign themselves a role.
+- A driver profile remains restricted until its verification status is `verified`.
+- The auth middleware refreshes and verifies claims; page authorization independently reads the database role records.
+
+Configure the Supabase Auth site URL and redirect allow-list to include the deployed app origin and the local development origin. Add `/auth/callback` to the allowed redirect URLs. Keep administrator assignment and driver verification as trusted administrative operations.
