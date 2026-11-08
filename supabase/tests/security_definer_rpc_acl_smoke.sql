@@ -37,6 +37,21 @@ begin
     raise exception 'The private active-account helper must not be directly executable by API roles';
   end if;
 
+  if not has_function_privilege('authenticated','private.is_driver_presence_fresh(uuid)','EXECUTE')
+     or has_function_privilege('anon','private.is_driver_presence_fresh(uuid)','EXECUTE') then
+    raise exception 'The private trip-presence helper has an unexpected EXECUTE grant';
+  end if;
+
+  if not exists (
+    select 1 from pg_proc p
+    where p.oid='private.is_driver_presence_fresh(uuid)'::regprocedure
+      and p.prosecdef
+      and coalesce(array_to_string(p.proconfig, ','), '') like '%search_path=pg_catalog, public%'
+      and position('require_active_account' in lower(pg_get_functiondef(p.oid))) > 0
+  ) then
+    raise exception 'The private trip-presence helper is missing SECURITY DEFINER, fixed search_path, or active-account guard';
+  end if;
+
   if has_function_privilege('anon','public.get_latest_trip_location(uuid)','EXECUTE') then
     raise exception 'Anonymous execution of the participant trip-location RPC is enabled';
   end if;
