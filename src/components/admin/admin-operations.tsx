@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { AdminRole } from "@/lib/auth/types";
 
 type Driver = { user_id: string; verification_status: string; created_at: string; verified_at: string | null };
 type Vehicle = { id: string; driver_id: string; make: string; model: string; registration_number: string; seat_capacity: number; vehicle_status: string };
 type DriverDocument = { id: string; driver_id: string; document_type: string; storage_path: string; verification_status: string; rejection_reason: string | null; created_at: string };
 type Report = { id: string; reporter_id: string; reported_user_id: string; category: string; description: string; report_status: string; created_at: string };
-type AdminRole = "super_admin" | "verification_admin" | "operations_admin" | "support_admin";
 
 const requiredTypes = ["national_id", "driving_licence", "vehicle_registration", "vehicle_insurance"];
 

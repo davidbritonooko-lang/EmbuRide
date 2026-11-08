@@ -1,5 +1,6 @@
 export type AppRole = "passenger" | "driver" | "admin";
 export type AccountStatus = "active" | "suspended" | "closed";
+export type AdminRole = "super_admin" | "operations_admin" | "verification_admin" | "support_admin";
 export type DriverVerificationStatus =
   | "pending"
   | "under_review"
@@ -13,6 +14,6 @@ export type UserContext = {
   fullName: string;
   accountStatus: AccountStatus;
   role: AppRole;
-  adminRole: string | null;
+  adminRole: AdminRole | null;
   driverVerificationStatus: DriverVerificationStatus | null;
 };
