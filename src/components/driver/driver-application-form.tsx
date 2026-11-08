@@ -13,12 +13,12 @@ const requiredDocuments = [
 
 type DocumentType = (typeof requiredDocuments)[number]["type"];
 
-export function DriverApplicationForm({ userId }: { userId: string }) {
+export function DriverApplicationForm({ userId, hasApplication = false, initialDocuments = [], initialDocumentStatuses = {} }: { userId: string; hasApplication?: boolean; initialDocuments?: DocumentType[]; initialDocumentStatuses?: Partial<Record<DocumentType,string>> }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
-  const [applicationSubmitted, setApplicationSubmitted] = useState(false);
+  const [applicationSubmitted, setApplicationSubmitted] = useState(hasApplication);
   const [uploading, setUploading] = useState<DocumentType | null>(null);
-  const [uploaded, setUploaded] = useState<DocumentType[]>([]);
+  const [uploaded, setUploaded] = useState<DocumentType[]>(initialDocuments);\n  const [documentStatuses, setDocumentStatuses] = useState<Partial<Record<DocumentType,string>>>(initialDocumentStatuses);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -82,7 +82,7 @@ export function DriverApplicationForm({ userId }: { userId: string }) {
       return;
     }
 
-    setUploaded((current) => current.includes(type) ? current : [...current, type]);
+    setUploaded((current) => current.includes(type) ? current : [...current, type]);\n    setDocumentStatuses((current) => ({ ...current, [type]: "pending" }));
     setSuccess("Document uploaded successfully.");
     setUploading(null);
   }
@@ -152,7 +152,7 @@ export function DriverApplicationForm({ userId }: { userId: string }) {
                 <div key={document.type} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-slate-900">{document.label}</p>
-                    <p className="mt-1 text-xs text-slate-500">{isUploaded ? "Uploaded" : "PDF, JPG or PNG · maximum 10 MB"}</p>
+                    <p className="mt-1 text-xs text-slate-500">{documentStatuses[document.type] ? `Latest submission: ${documentStatuses[document.type]}` : isUploaded ? "Uploaded" : "PDF, JPG or PNG · maximum 10 MB"}</p>
                   </div>
                   <label className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                     {uploading === document.type ? "Uploading…" : isUploaded ? "Replace file" : "Choose file"}

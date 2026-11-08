@@ -24,7 +24,7 @@ export default async function ApplyDriverPage() {
             Submit your contact and vehicle details, then upload the documents required for verification. You cannot accept rides until an authorized administrator approves your application and vehicle.
           </p>
         </header>
-        <DriverApplicationForm userId={user.id} />
+        <DriverApplicationForm userId={user.id} hasApplication={user.driverVerificationStatus !== null} initialDocuments={initialDocuments} initialDocumentStatuses={initialDocumentStatuses} />
       </div>
     </main>
   );
