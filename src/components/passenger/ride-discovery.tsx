@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type NearbyDriver = {
@@ -14,7 +14,7 @@ type NearbyDriver = {
   average_rating: number;
 };
 
-type SharedRide = {
+export type SharedRide = {
   id: string;
   vehicle_id: string;
   departure_time: string;
@@ -22,7 +22,7 @@ type SharedRide = {
   suggested_fare: number | null;
 };
 
-type Vehicle = {
+export type Vehicle = {
   id: string;
   make: string;
   model: string;
@@ -43,13 +43,13 @@ function formatDeparture(value: string) {
   }).format(new Date(value));
 }
 
-export function RideDiscovery() {
+export function RideDiscovery({ initialSharedRides, initialVehicles }: { initialSharedRides: SharedRide[]; initialVehicles: Record<string, Vehicle> }) {
   const supabase = useMemo(() => createClient(), []);
   const [drivers, setDrivers] = useState<NearbyDriver[]>([]);
-  const [sharedRides, setSharedRides] = useState<SharedRide[]>([]);
-  const [vehicles, setVehicles] = useState<Record<string, Vehicle>>({});
+  const [sharedRides, setSharedRides] = useState<SharedRide[]>(initialSharedRides);
+  const [vehicles, setVehicles] = useState<Record<string, Vehicle>>(initialVehicles);
   const [locationState, setLocationState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
-  const [loadingRides, setLoadingRides] = useState(true);
+  const [loadingRides, setLoadingRides] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [ridesError, setRidesError] = useState<string | null>(null);
 
