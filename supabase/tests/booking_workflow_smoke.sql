@@ -69,4 +69,25 @@ begin
 end
 $test$;
 reset role;
+
+do $notifications$
+begin
+  if not exists(select 1 from public.notifications where user_id='88888888-8888-4888-8888-888888888888' and title='New ride request') then
+    raise exception 'Driver did not receive the new ride request notification';
+  end if;
+  if not exists(select 1 from public.notifications where user_id='99999999-9999-4999-8999-999999999999' and title='Ride request declined') then
+    raise exception 'Passenger did not receive the booking rejection notification';
+  end if;
+  if not exists(select 1 from public.notifications where user_id='99999999-9999-4999-8999-999999999999' and title='New fare proposal') then
+    raise exception 'Passenger did not receive the fare proposal notification';
+  end if;
+  if not exists(select 1 from public.notifications where user_id='88888888-8888-4888-8888-888888888888' and title='Fare agreed') then
+    raise exception 'Driver did not receive the fare agreement notification';
+  end if;
+  if not exists(select 1 from public.notifications where user_id='99999999-9999-4999-8999-999999999999' and title='Booking confirmed') then
+    raise exception 'Passenger did not receive the booking confirmation notification';
+  end if;
+end
+$notifications$;
+
 rollback;
