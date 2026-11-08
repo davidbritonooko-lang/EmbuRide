@@ -29,6 +29,8 @@ export function AdminOperations({
   documents: DriverDocument[];
   reports: Report[];
   names: Record<string, string>;
+  accounts: Account[];
+  currentAdminId: string;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
