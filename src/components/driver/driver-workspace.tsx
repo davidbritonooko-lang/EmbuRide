@@ -79,6 +79,7 @@ export function DriverWorkspace({
   const presenceWatchIdRef = useRef<number | null>(null);
   const presenceHeartbeatRef = useRef<number | null>(null);
   const presenceSharingRef = useRef(false);
+  const lastKnownCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const lastPresenceSentAtRef = useRef(0);
 
   const stopPresenceSharing = useCallback((markUnavailable = false) => {
