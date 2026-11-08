@@ -9,6 +9,7 @@ type Driver = { user_id: string; verification_status: string; created_at: string
 type Vehicle = { id: string; driver_id: string; make: string; model: string; registration_number: string; seat_capacity: number; vehicle_status: string };
 type DriverDocument = { id: string; driver_id: string; document_type: string; storage_path: string; verification_status: string; rejection_reason: string | null; created_at: string };
 type Report = { id: string; reporter_id: string; reported_user_id: string; category: string; description: string; report_status: string; created_at: string };
+type Account = { id: string; full_name: string; account_status: string; role: string };
 
 const requiredTypes = ["national_id", "driving_licence", "vehicle_registration", "vehicle_insurance"];
 
@@ -30,7 +31,7 @@ export function AdminOperations({
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const canVerify = adminRole === "super_admin" || adminRole === "verification_admin";
-  const canSupport = canVerify || adminRole === "operations_admin" || adminRole === "support_admin";
+  const canSupport = canVerify || adminRole === "operations_admin" || adminRole === "support_admin";\n  const canManageAccounts = adminRole === "super_admin";
   const [busy, setBusy] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [fileLinks, setFileLinks] = useState<Record<string, string>>({});
@@ -93,6 +94,38 @@ export function AdminOperations({
 
       {error && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
       {notice && <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{notice}</p>}
+
+      {canManageAccounts && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <div>
+            <p className="text-sm font-semibold text-teal-800">Super administrator</p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">Account access controls</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Suspend or close accounts with a recorded reason. Closed accounts cannot be reactivated through this control.</p>
+          </div>
+          {accounts.length === 0 ? <p className="mt-4 text-sm text-slate-600">No user accounts found.</p> : (
+            <div className="mt-4 space-y-3">
+              {accounts.map((account) => (
+                <article key={account.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div><h3 className="font-semibold text-slate-900">{account.full_name}</h3><p className="mt-1 text-xs text-slate-500">{account.role.replaceAll("_"," ")} · {account.id.slice(0,8)}</p></div>
+                    <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">{account.account_status}</span>
+                  </div>
+                  {account.id !== currentAdminId && (
+                    <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                      <select value={accountStatuses[account.id] ?? account.account_status} onChange={(event) => setAccountStatuses((current) => ({...current,[account.id]:event.target.value}))} className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm">
+                        <option value="active">Active</option><option value="suspended">Suspended</option><option value="closed">Closed</option>
+                      </select>
+                      <input value={reasons[`account-${account.id}`] ?? ""} onChange={(event) => setReasons((current) => ({...current,[`account-${account.id}`]:event.target.value}))} placeholder="Reason for change" className="min-h-10 rounded-lg border border-slate-300 px-3 text-sm" />
+                      <button type="button" disabled={busy === `account-${account.id}` || (reasons[`account-${account.id}`] ?? "").trim().length < 3 || (accountStatuses[account.id] ?? account.account_status) === account.account_status} onClick={() => void runAction(`account-${account.id}`,() => supabase.rpc("admin_set_account_status",{p_user_id:account.id,p_next_status:accountStatuses[account.id] ?? account.account_status,p_reason:reasons[`account-${account.id}`]}))} className="min-h-10 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Save access</button>
+                    </div>
+                  )}
+                  {account.id === currentAdminId && <p className="text-xs text-slate-500">Your own administrator account is protected from this control.</p>}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {canVerify && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">

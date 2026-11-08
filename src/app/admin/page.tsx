@@ -5,21 +5,23 @@ import { createClient } from "@/lib/supabase/server";
 export default async function AdminHome() {
   const user = await requireRole("admin");
   const supabase = await createClient();
-  const [driverResult, vehicleResult, documentResult, reportResult] = await Promise.all([
+  const [driverResult, vehicleResult, documentResult, reportResult, accountResult, adminResult] = await Promise.all([
     supabase.from("driver_profiles").select("user_id, verification_status, created_at, verified_at").order("created_at",{ascending:false}),
     supabase.from("vehicles").select("id, driver_id, make, model, registration_number, seat_capacity, vehicle_status").order("created_at",{ascending:false}),
     supabase.from("driver_documents").select("id, driver_id, document_type, storage_path, verification_status, rejection_reason, created_at").order("created_at",{ascending:false}),
     supabase.from("reports").select("id, reporter_id, reported_user_id, category, description, report_status, created_at").order("created_at",{ascending:false}).limit(50),
+    supabase.from("profiles").select("id, full_name, account_status").order("created_at",{ascending:false}).limit(200),
+    supabase.from("admin_profiles").select("user_id, admin_role"),
   ]);
 
-  const userIds = [...new Set([
-    ...(driverResult.data ?? []).map((driver) => driver.user_id),
-    ...(reportResult.data ?? []).flatMap((report) => [report.reporter_id, report.reported_user_id]),
-  ])];
-  const profileResult = userIds.length > 0
-    ? await supabase.from("profiles").select("id, full_name").in("id",userIds)
-    : { data: [] };
-  const names = Object.fromEntries((profileResult.data ?? []).map((profile) => [profile.id,profile.full_name]));
+  const driverIds = new Set((driverResult.data ?? []).map((driver) => driver.user_id));
+  const adminIds = new Set((adminResult.data ?? []).map((admin) => admin.user_id));
+  const accounts = (accountResult.data ?? []).map((account) => ({
+    ...account,
+    role: adminIds.has(account.id) ? "admin" : driverIds.has(account.id) ? "driver" : "passenger",
+  }));
+  const names = Object.fromEntries(accounts.map((account) => [account.id,account.full_name]));
+
 
   return (
     <div className="space-y-6">
