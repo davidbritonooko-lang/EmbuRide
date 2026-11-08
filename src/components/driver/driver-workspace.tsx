@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -75,6 +75,18 @@ export function DriverWorkspace({
   const sharingBookingIdRef = useRef<string | null>(null);
   const lastLocationSentAtRef = useRef(0);
 
+  const stopLiveLocation = useCallback((showMessage = true) => {
+    if (locationWatchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(locationWatchIdRef.current);
+    }
+    locationWatchIdRef.current = null;
+    sharingBookingIdRef.current = null;
+    setSharingBookingId(null);
+    setBusy((current) => current?.startsWith("location-") ? null : current);
+    if (showMessage) setMessage("Live location sharing has stopped.");
+  }, []);
+
+
   useEffect(() => {
     const channel = supabase.channel(`driver-bookings-${driverId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `driver_id=eq.${driverId}` }, () => router.refresh())
@@ -93,7 +105,18 @@ export function DriverWorkspace({
       stopLiveLocation(false);
       setMessage("Live location sharing stopped because the booking is no longer active.");
     }
-  }, [bookings, sharingBookingId]);
+  }, [bookings, sharingBookingId, stopLiveLocation]);
+
+  useEffect(() => {
+    const stopWhenHidden = () => {
+      if (document.visibilityState === "hidden" && sharingBookingIdRef.current) {
+        stopLiveLocation(false);
+        setMessage("Live location sharing stopped because this page is no longer visible. Start again when you return.");
+      }
+    };
+    document.addEventListener("visibilitychange", stopWhenHidden);
+    return () => document.removeEventListener("visibilitychange", stopWhenHidden);
+  }, [stopLiveLocation]);
 
   useEffect(() => {
     return () => {
@@ -153,17 +176,6 @@ export function DriverWorkspace({
       ...current,
       [bookingId]: { name: data[0].full_name, phone: data[0].phone },
     }));
-  }
-
-  function stopLiveLocation(showMessage = true) {
-    if (locationWatchIdRef.current !== null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(locationWatchIdRef.current);
-    }
-    locationWatchIdRef.current = null;
-    sharingBookingIdRef.current = null;
-    setSharingBookingId(null);
-    setBusy((current) => current?.startsWith("location-") ? null : current);
-    if (showMessage) setMessage("Live location sharing has stopped.");
   }
 
   function startLiveLocation(bookingId: string) {
