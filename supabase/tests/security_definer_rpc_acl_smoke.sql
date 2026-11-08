@@ -40,5 +40,11 @@ begin
   if has_function_privilege('anon','public.get_latest_trip_location(uuid)','EXECUTE') then
     raise exception 'Anonymous execution of the participant trip-location RPC is enabled';
   end if;
+  if has_function_privilege('anon','private.is_driver_presence_fresh(uuid)','EXECUTE') then
+    raise exception 'Anonymous execution of the private driver-presence helper is enabled';
+  end if;
+  if not has_function_privilege('authenticated','private.is_driver_presence_fresh(uuid)','EXECUTE') then
+    raise exception 'Authenticated execution of the private RLS helper is missing';
+  end if;
 end
 $security_review$;
