@@ -25,15 +25,15 @@ The Performance Advisor reports 19 unused-index notices. These are informational
 ## Verification performed
 
 - Existing database workflow smoke tests: booking, driver workflows, admin workflows, account status, RLS, profile/notification, and database workflows.
-- Trip-location smoke test: active passenger can read the latest point; an unrelated account cannot; access closes after completion. Test fixtures were rolled back.
-- Security ACL smoke test: all 24 authenticated `SECURITY DEFINER` RPCs have the active-account guard, fixed search paths, and no anonymous EXECUTE grant.
+- Trip-location smoke test: active passenger can read the latest point; an unrelated account cannot; going offline blocks further writes and hides the last point; access resumes only after the driver resumes sharing; access closes after completion. Test fixtures were rolled back.
+- Security ACL smoke test: all 24 authenticated public-schema `SECURITY DEFINER` RPCs have the active-account guard, fixed search paths, and no anonymous EXECUTE grant. The private presence helper was separately checked for the same constraints.
 - Public UI Playwright checks cover the landing, sign-in, and registration pages at multiple viewport widths. These do not replace authenticated passenger, driver, and admin browser testing.
 
 ## Release gates still open
 
 - Complete authenticated browser end-to-end tests for passenger, driver, and administrator journeys.
 - Verify real Supabase sign-in, email confirmation, password recovery, document upload, and private document review using controlled test accounts.
-- Complete the individual review of all 24 `SECURITY DEFINER` RPCs and decide how to handle the remaining advisor warnings.
+- Complete a formal security review/sign-off for the 24 intentionally exposed `SECURITY DEFINER` RPCs and decide how to handle the remaining advisor warnings.
 - Confirm production environment variables, authentication redirect URLs, domain, and deployment access.
 - Complete responsive and live-map checks on real mobile devices and a production-like browser deployment.
 
