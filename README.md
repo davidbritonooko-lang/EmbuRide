@@ -21,10 +21,10 @@ The application uses Next.js App Router, TypeScript, Tailwind CSS, and Supabase 
 1. Install Node.js 20 or later.
 2. Install dependencies with `npm install`.
 3. Copy `.env.example` to `.env.local`.
-4. Set the Supabase project URL and publishable/anon key in `.env.local`.
+4. Set the Supabase project URL and publishable/publishable key in `.env.local`.
 5. Start the development server with `npm run dev`.
 
-Never put a Supabase service-role key in a `NEXT_PUBLIC_*` variable or commit it to the repository. The browser and server clients in this stage use only the public anon key; database access remains governed by RLS.
+Never put a Supabase service-role key in a `NEXT_PUBLIC_*` variable or commit it to the repository. The browser and server clients in this stage use only the public publishable key; database access remains governed by RLS.
 
 ### Current implementation boundary
 
