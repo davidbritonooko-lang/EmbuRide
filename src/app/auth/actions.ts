@@ -4,10 +4,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-function messageCode(message: string): string {
-  return encodeURIComponent(message.slice(0, 160));
-}
-
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
@@ -17,7 +13,7 @@ export async function signInAction(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) redirect(`/login?error=${messageCode(error.message)}`);
+  if (error) redirect("/login?error=auth");
   redirect("/dashboard");
 }
 
@@ -43,7 +39,7 @@ export async function signUpAction(formData: FormData) {
     },
   });
 
-  if (error) redirect(`/signup?error=${messageCode(error.message)}`);
+  if (error) redirect("/signup?error=signup");
   if (data.session) redirect("/dashboard");
   redirect("/check-email");
 }
