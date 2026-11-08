@@ -11,6 +11,10 @@ values
 ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','authenticated','authenticated','trip-location-stranger@example.invalid',
  '{"provider":"email","providers":["email"]}'::jsonb,'{"full_name":"Trip Location Stranger"}'::jsonb,now(),now(),now());
 
+update public.profiles
+set date_of_birth = '1990-01-01'
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
 select public.submit_driver_application('+254700000777','Toyota','Probox','KXX777X','Silver',4::smallint);
