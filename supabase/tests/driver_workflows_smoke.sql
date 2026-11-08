@@ -12,6 +12,10 @@ values (
   now(),now(),now()
 );
 
+update public.profiles
+set date_of_birth = '1990-01-01'
+where id = '77777777-7777-4777-8777-777777777777';
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','77777777-7777-4777-8777-777777777777',true);
 
