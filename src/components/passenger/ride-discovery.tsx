@@ -96,10 +96,6 @@ export function RideDiscovery({ initialSharedRides, initialVehicles }: { initial
     setLoadingRides(false);
   }, [supabase]);
 
-  useEffect(() => {
-    void loadSharedRides();
-  }, [loadSharedRides]);
-
   const searchNearbyDrivers = () => {
     setSearchError(null);
     setLocationState("loading");
