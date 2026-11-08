@@ -18,11 +18,23 @@ The application uses Next.js App Router, TypeScript, Tailwind CSS, and Supabase 
 
 ### Local setup
 
-1. Install Node.js 20 or later.
-2. Install dependencies with `npm install`.
+1. Install Node.js 22 (the repository includes an `.nvmrc`).
+2. Install dependencies with `npm ci` using the committed lockfile.
 3. Copy `.env.example` to `.env.local`.
-4. Set the Supabase project URL and publishable/publishable key in `.env.local`.
+4. Set the Supabase project URL and publishable key in `.env.local`.
 5. Start the development server with `npm run dev`.
+
+### Verification
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+The Playwright suite currently verifies the public landing, login, and signup flows and checks horizontal overflow at nine viewport widths. Authenticated passenger, driver, and admin journeys still require a connected preview deployment and controlled test accounts.
 
 Never put a Supabase service-role key in a `NEXT_PUBLIC_*` variable or commit it to the repository. The browser and server clients in this stage use only the public publishable key; database access remains governed by RLS.
 
