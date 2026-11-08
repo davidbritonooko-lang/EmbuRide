@@ -88,7 +88,7 @@ returns void
 language plpgsql
 security definer
 set search_path = pg_catalog, public, extensions
-as $
+as $presence$
 declare v_user uuid := (select auth.uid());
 begin
   if v_user is null then raise exception 'Authentication required' using errcode='42501'; end if;
@@ -123,7 +123,7 @@ begin
     is_online=excluded.is_online,
     updated_at=now();
 end;
-$;
+$presence$;
 revoke all on function public.set_driver_presence(double precision,double precision,double precision,double precision,boolean) from public, anon;
 grant execute on function public.set_driver_presence(double precision,double precision,double precision,double precision,boolean) to authenticated;
 
