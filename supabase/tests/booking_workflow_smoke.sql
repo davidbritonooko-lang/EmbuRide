@@ -8,6 +8,10 @@ values
 ('99999999-9999-4999-8999-999999999999','authenticated','authenticated','emburide-stage4-passenger2@example.invalid',
  '{"provider":"email","providers":["email"]}'::jsonb,'{"full_name":"Booking Passenger Test"}'::jsonb,now(),now(),now());
 
+update public.profiles
+set date_of_birth = '1990-01-01'
+where id = '88888888-8888-4888-8888-888888888888';
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','88888888-8888-4888-8888-888888888888',true);
 select public.submit_driver_application('+254700000888','Toyota','Probox','KXX888X','Silver',4::smallint);
