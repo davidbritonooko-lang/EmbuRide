@@ -38,9 +38,10 @@ The application includes email/password authentication flows, database-backed ro
 - Map-selected points are reverse-geocoded with OpenStreetMap Nominatim when available. Coordinates remain usable if a place label cannot be resolved.
 - Nearby-driver and shared-ride searches use the selected coordinates through protected Supabase RPCs. Exact driver presence coordinates are not exposed to passengers.
 - OpenStreetMap and Nominatim usage is subject to their attribution and fair-use policies.
-- Drivers can explicitly start foreground live location sharing for an active booking; updates are rate-limited to at most one write every 15 seconds.
-- Location sharing stops when the driver stops it, goes offline, the page becomes hidden, the page closes, or the booking is no longer active. Background GPS tracking is not used.
-- Passengers can view the latest driver location on the booking page while the booking is active. The read RPC runs as the caller and is protected by the existing trip-location RLS policy; completed and cancelled bookings no longer expose the location.
+- Drivers must explicitly enable foreground location sharing to appear in nearby-driver discovery. Presence updates are rate-limited to at most one write every 30 seconds; search results expose approximate distance rather than exact coordinates.
+- For an active booking, a driver can explicitly start foreground trip-location sharing; trip updates are rate-limited to at most one write every 15 seconds.
+- Location sharing stops when the driver goes offline, the page becomes hidden or closes, or the booking is no longer active. Drivers must re-enable sharing when they return to the page. Background GPS tracking is not used.
+- Passengers can view the latest driver location only while the booking is active and driver presence is fresh. The participant-scoped read RPC uses row-level security; offline or stale location points are hidden, and completed/cancelled bookings no longer expose them.
 - The live trip map uses OpenStreetMap tiles and displays the time of the latest received location update.
 
 ## Authentication and role routing
