@@ -1,4 +1,5 @@
-import Link from "next/link";\nimport { PassengerRouteSearch } from "@/components/passenger/passenger-route-search";
+import Link from "next/link";
+import { PassengerRouteSearch } from "@/components/passenger/passenger-route-search";
 import { RideDiscovery, type SharedRide, type Vehicle } from "@/components/passenger/ride-discovery";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,7 +42,8 @@ export default async function PassengerHome() {
         <div><p className="font-semibold text-slate-900">Interested in driving?</p><p className="mt-1 text-sm text-slate-600">Apply to become a verified EmbuRide driver.</p></div>
         <Link href="/apply-driver" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900">Apply to drive</Link>
       </div>
-      <PassengerRouteSearch />\n      <RideDiscovery initialSharedRides={initialSharedRides} initialVehicles={initialVehicles} />
+      <PassengerRouteSearch />
+      <RideDiscovery initialSharedRides={initialSharedRides} initialVehicles={initialVehicles} />
     </div>
   );
 }
