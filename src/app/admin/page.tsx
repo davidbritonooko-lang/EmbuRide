@@ -37,6 +37,8 @@ export default async function AdminHome() {
         documents={documentResult.data ?? []}
         reports={reportResult.data ?? []}
         names={names}
+        accounts={accounts}
+        currentAdminId={user.id}
       />
     </div>
   );

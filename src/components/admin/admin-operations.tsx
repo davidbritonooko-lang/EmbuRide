@@ -20,6 +20,8 @@ export function AdminOperations({
   documents,
   reports,
   names,
+  accounts,
+  currentAdminId,
 }: {
   adminRole: AdminRole | null;
   drivers: Driver[];
@@ -31,7 +33,8 @@ export function AdminOperations({
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const canVerify = adminRole === "super_admin" || adminRole === "verification_admin";
-  const canSupport = canVerify || adminRole === "operations_admin" || adminRole === "support_admin";\n  const canManageAccounts = adminRole === "super_admin";
+  const canSupport = canVerify || adminRole === "operations_admin" || adminRole === "support_admin";
+  const canManageAccounts = adminRole === "super_admin";
   const [busy, setBusy] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [fileLinks, setFileLinks] = useState<Record<string, string>>({});
