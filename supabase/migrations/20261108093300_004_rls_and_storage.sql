@@ -20,7 +20,7 @@ alter table public.payment_records enable row level security;
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all sequences in schema public from anon, authenticated;
 
-grant select (id,full_name,email,avatar_url,account_status,created_at,updated_at) on public.profiles to authenticated;
+grant select (id,full_name,avatar_url,account_status,created_at,updated_at) on public.profiles to authenticated;
 grant update (full_name,avatar_url) on public.profiles to authenticated;
 grant select on public.driver_profiles, public.vehicles, public.ride_offers to authenticated;
 grant select on public.driver_documents, public.bookings, public.fare_offers,
@@ -45,7 +45,7 @@ using (
 create policy "profiles_update_self"
 on public.profiles for update to authenticated
 using (id=(select auth.uid()))
-with check (id=(select auth.uid()) and account_status = (select p.account_status from public.profiles p where p.id=(select auth.uid())));
+with check (id=(select auth.uid()));
 
 create policy "driver_profiles_read_verified_or_self"
 on public.driver_profiles for select to authenticated
