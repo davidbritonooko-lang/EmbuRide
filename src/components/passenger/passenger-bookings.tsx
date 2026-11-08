@@ -18,7 +18,6 @@ export function PassengerBookings({
   userId: string;
   bookings: Booking[];
   tripLocations: Record<string, TripLocationPoint>;
-  tripLocations: Record<string, TripLocationPoint>;
   driverNames: Record<string,string>;
   fareOffers: FareOffer[];
   events: TripEvent[];
