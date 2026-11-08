@@ -52,10 +52,7 @@ jobs:
         shell: bash
         run: |
           eval "$(supabase status -o env)"
-          for test_file in supabase/tests/*.sql; do
-            echo "Running ${test_file}"
-            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$test_file"
-          done
+          npm run test:db
       - name: Stop local Supabase stack
         if: always()
         run: supabase stop --no-backup
