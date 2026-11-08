@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
 
   // Refreshes the session and validates the user with Supabase Auth.
   // Authorization and account roles must still be checked server-side.
-  await supabase.auth.getUser();
+  await supabase.auth.getClaims();
 
   return response;
 }
