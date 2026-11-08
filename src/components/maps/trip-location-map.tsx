@@ -22,7 +22,7 @@ export function TripLocationMap({ location }: { location: TripLocationPoint }) {
     void import("leaflet").then((L) => {
       if (disposed || !containerRef.current) return;
       const map = L.map(containerRef.current, {
-        center: [location.latitude, location.longitude],
+        center: [-0.539, 37.457],
         zoom: 14,
         scrollWheelZoom: false,
       });
