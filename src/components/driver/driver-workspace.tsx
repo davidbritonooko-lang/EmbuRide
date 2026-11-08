@@ -400,7 +400,7 @@ export function DriverWorkspace({
                 } else void changeAvailability(false);
               }}
               className={`min-h-11 rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 ${available && presenceSharing ? "bg-emerald-700 hover:bg-emerald-800" : "bg-slate-800 hover:bg-slate-900"}`}>
-              {busy === "availability" ? "Updating…" : available ? presenceSharing ? "Go offline" : "Enable location sharing" : "Go available"}
+              {busy === "availability" ? "Updating…" : available ? presenceSharing ? presenceReady ? "Go offline" : "Locating…" : "Enable location sharing" : "Go available"}
             </button>
           )}
         </div>
