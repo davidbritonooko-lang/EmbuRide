@@ -132,6 +132,9 @@ begin
   ) then
     raise exception 'A non-participant can read the active trip location';
   end if;
+  if private.is_driver_presence_fresh('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') then
+    raise exception 'A non-participant can infer another driver presence state';
+  end if;
 end
 $stranger_read$;
 reset role;
