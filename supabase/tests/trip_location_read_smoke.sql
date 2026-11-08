@@ -90,6 +90,56 @@ end
 $stranger_read$;
 reset role;
 
+-- Going offline clears presence, hides the last trip point, and blocks new writes.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+select public.set_driver_availability(false);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+do $offline_read$
+begin
+  if exists(
+    select 1 from public.get_latest_trip_location(current_setting('test.booking_id')::uuid)
+  ) then
+    raise exception 'Passenger can still read trip location after driver goes offline';
+  end if;
+end
+$offline_read$;
+
+select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+do $offline_write$
+begin
+  begin
+    perform public.record_trip_location(current_setting('test.booking_id')::uuid,-0.5330,37.4530);
+    raise exception 'An offline driver was able to publish a trip location';
+  exception when insufficient_privilege then
+    null;
+  end;
+end
+$offline_write$;
+select public.set_driver_availability(true);
+select public.set_driver_presence(-0.5330,37.4530,null,null,true);
+select public.record_trip_location(current_setting('test.booking_id')::uuid,-0.5330,37.4530);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+do $resumed_read$
+declare v_location record;
+begin
+  select * into v_location
+  from public.get_latest_trip_location(current_setting('test.booking_id')::uuid);
+  if not found then raise exception 'Passenger could not read location after the driver resumed sharing'; end if;
+  if abs(v_location.latitude - (-0.5330)) > 0.000001
+     or abs(v_location.longitude - 37.4530) > 0.000001 then
+    raise exception 'Resumed trip location does not match the latest recorded point';
+  end if;
+end
+$resumed_read$;
+reset role;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
 select public.update_booking_status(current_setting('test.booking_id')::uuid,'driver_arriving');
