@@ -13,9 +13,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install
       - run: npm audit --audit-level=moderate
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser smoke and responsive tests
+        run: npm run test:e2e
