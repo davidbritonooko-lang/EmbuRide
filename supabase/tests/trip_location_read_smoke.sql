@@ -29,25 +29,30 @@ select public.set_driver_availability(true);
 select public.set_driver_presence(-0.5300,37.4500,null,null,true);
 
 select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
-select public.create_booking(
-  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','private',
-  -0.5300,37.4500,-0.5400,37.4600,1::smallint,null
-) as booking_id
-\gset
+select set_config(
+  'test.booking_id',
+  public.create_booking(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','private',
+    -0.5300,37.4500,-0.5400,37.4600,1::smallint,null
+  )::text,
+  true
+);
 
 select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
-select public.propose_fare(:'booking_id'::uuid,350::numeric,'Trip location test fare') as fare_offer_id
-\gset
+select set_config(
+  'test.fare_offer_id',
+  public.propose_fare(current_setting('test.booking_id')::uuid,350::numeric,'Trip location test fare')::text,
+  true
+);
 
 select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
-select public.accept_fare(:'fare_offer_id'::uuid);
+select public.accept_fare(current_setting('test.fare_offer_id')::uuid);
 select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
-select public.confirm_booking(:'booking_id'::uuid);
-select public.record_trip_location(:'booking_id'::uuid,-0.5325,37.4525);
+select public.confirm_booking(current_setting('test.booking_id')::uuid);
+select public.record_trip_location(current_setting('test.booking_id')::uuid,-0.5325,37.4525);
 reset role;
 
-do $participant_read$
-declare v_location record;
+do $privileges$
 begin
   if not has_function_privilege('authenticated','public.get_latest_trip_location(uuid)','EXECUTE') then
     raise exception 'Authenticated role cannot execute the latest trip location RPC';
@@ -56,14 +61,15 @@ begin
     raise exception 'Anonymous role can execute the latest trip location RPC';
   end if;
 end
-$participant_read$;
+$privileges$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
 do $passenger_read$
 declare v_location record;
 begin
-  select * into v_location from public.get_latest_trip_location(:'booking_id'::uuid);
+  select * into v_location
+  from public.get_latest_trip_location(current_setting('test.booking_id')::uuid);
   if not found then raise exception 'Passenger could not read the active booking location'; end if;
   if abs(v_location.latitude - (-0.5325)) > 0.000001
      or abs(v_location.longitude - 37.4525) > 0.000001 then
@@ -75,7 +81,9 @@ $passenger_read$;
 select set_config('request.jwt.claim.sub','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
 do $stranger_read$
 begin
-  if exists(select 1 from public.get_latest_trip_location(:'booking_id'::uuid)) then
+  if exists(
+    select 1 from public.get_latest_trip_location(current_setting('test.booking_id')::uuid)
+  ) then
     raise exception 'A non-participant can read the active trip location';
   end if;
 end
@@ -84,17 +92,19 @@ reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
-select public.update_booking_status(:'booking_id'::uuid,'driver_arriving');
-select public.update_booking_status(:'booking_id'::uuid,'picked_up');
-select public.update_booking_status(:'booking_id'::uuid,'in_progress');
-select public.update_booking_status(:'booking_id'::uuid,'completed');
+select public.update_booking_status(current_setting('test.booking_id')::uuid,'driver_arriving');
+select public.update_booking_status(current_setting('test.booking_id')::uuid,'picked_up');
+select public.update_booking_status(current_setting('test.booking_id')::uuid,'in_progress');
+select public.update_booking_status(current_setting('test.booking_id')::uuid,'completed');
 reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
 do $completed_read$
 begin
-  if exists(select 1 from public.get_latest_trip_location(:'booking_id'::uuid)) then
+  if exists(
+    select 1 from public.get_latest_trip_location(current_setting('test.booking_id')::uuid)
+  ) then
     raise exception 'Trip location remains visible after the booking is completed';
   end if;
 end
