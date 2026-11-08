@@ -1,5 +1,6 @@
 import { DriverWorkspace } from "@/components/driver/driver-workspace";
 import { SharedRidePublisher } from "@/components/driver/shared-ride-publisher";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -66,6 +67,12 @@ export default async function DriverHome() {
         passengerNames={passengerNames}
         fareOffers={fareResult.data ?? []}
       />
+      {["pending","under_review","rejected"].includes(profileResult.data?.verification_status ?? user.driverVerificationStatus ?? "") && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-amber-950">Need to upload or replace a verification document?</p>
+          <Link href="/apply-driver" className="mt-2 inline-flex text-sm font-semibold text-amber-950 underline underline-offset-4">Manage verification documents</Link>
+        </div>
+      )}
       {profileResult.data?.verification_status === "verified" && (
         <SharedRidePublisher
           vehicles={(vehicleResult.data ?? []).filter((vehicle) => vehicle.vehicle_status === "approved")}
