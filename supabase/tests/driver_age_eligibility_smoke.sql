@@ -89,7 +89,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
 select public.submit_driver_application(
   '+254700000222',
-  '1990-01-01'::date,
+  (current_date - interval '18 years')::date,
   'Toyota','Probox','KXX222X','Silver',4::smallint
 );
 
