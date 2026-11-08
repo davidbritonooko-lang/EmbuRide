@@ -91,7 +91,7 @@ export function PassengerRouteSearch() {
           p_origin_longitude: pickupPlace.lon,
           p_destination_latitude: destinationPlace.lat,
           p_destination_longitude: destinationPlace.lon,
-          p_radius_meters: 15000,
+          p_radius_meters: 5000,
           p_departure_after: new Date().toISOString(),
           p_limit: 20,
         }),
