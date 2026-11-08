@@ -119,44 +119,47 @@ export function DriverWorkspace({
     setPresenceReady(false);
     lastPresenceSentAtRef.current = 0;
 
+    const publishLatestPresence = () => {
+      if (!presenceSharingRef.current) return;
+      const coordinates = lastKnownCoordsRef.current;
+      if (!coordinates) return;
+      const now = Date.now();
+      if (now - lastPresenceSentAtRef.current < 30000) return;
+      lastPresenceSentAtRef.current = now;
+
+      void Promise.resolve(supabase.rpc("set_driver_presence", {
+        p_latitude: coordinates.latitude,
+        p_longitude: coordinates.longitude,
+        p_destination_latitude: null,
+        p_destination_longitude: null,
+        p_is_online: true,
+      })).then(({ error: presenceError }) => {
+        if (!presenceSharingRef.current) return;
+        if (presenceError) {
+          stopPresenceSharing(false);
+          void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
+          setAvailable(false);
+          setError("Your location could not be shared, so driver availability was switched off.");
+        } else {
+          setPresenceReady(true);
+        }
+      }).catch(() => {
+        if (!presenceSharingRef.current) return;
+        stopPresenceSharing(false);
+        void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
+        setAvailable(false);
+        setError("The connection failed while sharing your location. Driver availability was switched off.");
+      });
+    };
+
     try {
       const watchId = navigator.geolocation.watchPosition(
         ({ coords }) => {
           if (!presenceSharingRef.current) return;
-          const coordinates = { latitude: coords.latitude, longitude: coords.longitude };
-          lastKnownCoordsRef.current = coordinates;
-          const publish = () => {
-            if (!presenceSharingRef.current) return;
-            const now = Date.now();
-            if (now - lastPresenceSentAtRef.current < 30000) return;
-            lastPresenceSentAtRef.current = now;
-            void Promise.resolve(supabase.rpc("set_driver_presence", {
-              p_latitude: coordinates.latitude,
-              p_longitude: coordinates.longitude,
-              p_destination_latitude: null,
-              p_destination_longitude: null,
-              p_is_online: true,
-            })).then(({ error: presenceError }) => {
-              if (!presenceSharingRef.current) return;
-              if (presenceError) {
-                stopPresenceSharing(false);
-                void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
-                setAvailable(false);
-                setError("Your location could not be shared, so driver availability was switched off.");
-              } else {
-                setPresenceReady(true);
-              }
-            }).catch(() => {
-              if (!presenceSharingRef.current) return;
-              stopPresenceSharing(false);
-              void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
-              setAvailable(false);
-              setError("The connection failed while sharing your location. Driver availability was switched off.");
-            });
-          };
-          publish();
+          lastKnownCoordsRef.current = { latitude: coords.latitude, longitude: coords.longitude };
+          publishLatestPresence();
           if (presenceHeartbeatRef.current === null) {
-            presenceHeartbeatRef.current = window.setInterval(publish, 30000);
+            presenceHeartbeatRef.current = window.setInterval(publishLatestPresence, 30000);
           }
         },
         () => {
