@@ -24,7 +24,7 @@ export default async function ProfilePage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account email</p>
           <p className="mt-1 text-sm font-medium text-slate-900">{user.email ?? "Not available"}</p>
         </div>
-        <ProfileForm userId={user.id} initialName={profile?.full_name ?? user.fullName} initialPhone={profile?.phone ?? null} />
+        <ProfileForm initialName={profile?.full_name ?? user.fullName} initialPhone={profile?.phone ?? null} />
       </div>
     </main>
   );

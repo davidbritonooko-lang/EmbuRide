@@ -20,7 +20,7 @@ export function WorkspaceShell({ title, fullName, userId, notifications, childre
           </div>
           <div className="flex items-center gap-3">
             <Link href="/profile" className="text-sm font-semibold text-teal-800 hover:underline">Profile</Link>
-            <NotificationCenter userId={userId} initialNotifications={notifications} />
+            <NotificationCenter key={notifications.map((item) => `${item.id}:${item.is_read}`).join("|")} userId={userId} initialNotifications={notifications} />
             <p className="hidden max-w-48 truncate text-sm font-medium text-slate-700 sm:block">{fullName}</p>
             <form action={signOutAction}>
               <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign out</button>

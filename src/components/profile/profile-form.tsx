@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export function ProfileForm({ userId, initialName, initialPhone }: { userId: string; initialName: string; initialPhone: string | null }) {
+export function ProfileForm({ initialName, initialPhone }: { initialName: string; initialPhone: string | null }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [fullName, setFullName] = useState(initialName);
