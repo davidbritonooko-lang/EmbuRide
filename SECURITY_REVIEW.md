@@ -12,7 +12,8 @@ Last reviewed: 2026-11-08
 - The `get_latest_trip_location(uuid)` RPC is `SECURITY INVOKER`, is executable only by authenticated users, checks for an active account, and relies on participant-scoped RLS for `trip_locations`.
 - The private `private.is_driver_presence_fresh(uuid)` helper checks that the caller has an active booking relationship with the driver before returning a presence-freshness boolean. It does not return coordinates and is not in the exposed public API schema.
 - The trip-location RLS policy permits participant reads only while the booking is active, the latest point is less than two minutes old, and the driver's presence is online and fresh. Admins retain access to active-trip records for operational review. Offline/stale points and completed/cancelled bookings are not exposed to ordinary participants.
-- `record_trip_location(uuid,double precision,double precision)` requires the assigned driver to be verified and available; it upserts the private presence row as part of the same operation.
+- `record_trip_location(uuid,double precision,double precision)` requires the assigned driver to be verified and available and only refreshes an already-online, fresh presence row; it cannot reactivate a driver who has gone offline.
+- Driver applications and final driver verification enforce a minimum age of 18. The age-gate smoke test verifies rejection below 18 and acceptance at the 18-year cutoff.
 
 ## Outstanding advisor findings
 
