@@ -18,7 +18,8 @@ export function DriverApplicationForm({ userId, hasApplication = false, initialD
   const router = useRouter();
   const [applicationSubmitted, setApplicationSubmitted] = useState(hasApplication);
   const [uploading, setUploading] = useState<DocumentType | null>(null);
-  const [uploaded, setUploaded] = useState<DocumentType[]>(initialDocuments);\n  const [documentStatuses, setDocumentStatuses] = useState<Partial<Record<DocumentType,string>>>(initialDocumentStatuses);
+  const [uploaded, setUploaded] = useState<DocumentType[]>(initialDocuments);
+  const [documentStatuses, setDocumentStatuses] = useState<Partial<Record<DocumentType,string>>>(initialDocumentStatuses);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -82,7 +83,8 @@ export function DriverApplicationForm({ userId, hasApplication = false, initialD
       return;
     }
 
-    setUploaded((current) => current.includes(type) ? current : [...current, type]);\n    setDocumentStatuses((current) => ({ ...current, [type]: "pending" }));
+    setUploaded((current) => current.includes(type) ? current : [...current, type]);
+    setDocumentStatuses((current) => ({ ...current, [type]: "pending" }));
     setSuccess("Document uploaded successfully.");
     setUploading(null);
   }
