@@ -12,6 +12,10 @@ values
 ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','authenticated','authenticated','emburide-reporter-smoke@example.invalid',
  '{"provider":"email","providers":["email"]}'::jsonb,'{"full_name":"Reporter Test"}'::jsonb,now(),now(),now());
 
+update public.profiles
+set date_of_birth = '1990-01-01'
+where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
 insert into public.admin_profiles(user_id,admin_role) values
 ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','verification_admin'),
 ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','operations_admin');
