@@ -71,9 +71,104 @@ export function DriverWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sharingBookingId, setSharingBookingId] = useState<string | null>(null);
+  const [presenceSharing, setPresenceSharing] = useState(false);
   const locationWatchIdRef = useRef<number | null>(null);
   const sharingBookingIdRef = useRef<string | null>(null);
   const lastLocationSentAtRef = useRef(0);
+  const presenceWatchIdRef = useRef<number | null>(null);
+  const presenceSharingRef = useRef(false);
+  const lastPresenceSentAtRef = useRef(0);
+  const lastKnownCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
+
+  const stopPresenceSharing = useCallback((markOffline = false) => {
+    const wasSharing = presenceSharingRef.current;
+    presenceSharingRef.current = false;
+    if (presenceWatchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(presenceWatchIdRef.current);
+    }
+    presenceWatchIdRef.current = null;
+    setPresenceSharing(false);
+
+    const coordinates = lastKnownCoordsRef.current;
+    if (markOffline && wasSharing && coordinates) {
+      void Promise.resolve(supabase.rpc("set_driver_presence", {
+        p_latitude: coordinates.latitude,
+        p_longitude: coordinates.longitude,
+        p_destination_latitude: null,
+        p_destination_longitude: null,
+        p_is_online: false,
+      })).then(({ error: presenceError }) => {
+        if (presenceError) setError("The driver presence status could not be cleared.");
+      }).catch(() => setError("The driver presence status could not be cleared."));
+    }
+  }, [supabase]);
+
+  const startPresenceSharing = useCallback(() => {
+    if (presenceWatchIdRef.current !== null) return true;
+    if (!navigator.geolocation) {
+      setError("This browser does not support location sharing. Location access is required for nearby-driver discovery.");
+      return false;
+    }
+
+    presenceSharingRef.current = true;
+    setPresenceSharing(true);
+    lastPresenceSentAtRef.current = 0;
+
+    try {
+      const watchId = navigator.geolocation.watchPosition(
+        ({ coords }) => {
+          if (!presenceSharingRef.current) return;
+          const coordinates = { latitude: coords.latitude, longitude: coords.longitude };
+          lastKnownCoordsRef.current = coordinates;
+          const now = Date.now();
+          if (now - lastPresenceSentAtRef.current < 30000) return;
+          lastPresenceSentAtRef.current = now;
+
+          void Promise.resolve(supabase.rpc("set_driver_presence", {
+            p_latitude: coordinates.latitude,
+            p_longitude: coordinates.longitude,
+            p_destination_latitude: null,
+            p_destination_longitude: null,
+            p_is_online: true,
+          })).then(({ error: presenceError }) => {
+            if (!presenceSharingRef.current) return;
+            if (presenceError) {
+              stopPresenceSharing(false);
+              void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
+              setAvailable(false);
+              setError("Your location could not be shared, so driver availability was switched off.");
+            }
+          }).catch(() => {
+            if (!presenceSharingRef.current) return;
+            stopPresenceSharing(false);
+            void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
+            setAvailable(false);
+            setError("The connection failed while sharing your location. Driver availability was switched off.");
+          });
+        },
+        () => {
+          if (!presenceSharingRef.current) return;
+          stopPresenceSharing(false);
+          void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false })).then(({ error: availabilityError }) => {
+            setAvailable(false);
+            setError(availabilityError
+              ? "Location access was lost. Update your availability and location permission before continuing."
+              : "Location access was lost, so driver availability was switched off.");
+          }).catch(() => {
+            setAvailable(false);
+            setError("Location access was lost and availability could not be updated. Please retry.");
+          });
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
+      presenceWatchIdRef.current = watchId;
+      return true;
+    } catch {
+      stopPresenceSharing(false);
+      setError("The browser could not start location sharing.");
+      return false;
+    }
+  }, [stopPresenceSharing, supabase]);
 
   const stopLiveLocation = useCallback((showMessage = true) => {
     if (locationWatchIdRef.current !== null && navigator.geolocation) {
@@ -110,24 +205,40 @@ export function DriverWorkspace({
 
   useEffect(() => {
     const stopWhenHidden = () => {
-      if (document.visibilityState === "hidden" && sharingBookingIdRef.current) {
+      if (document.visibilityState === "hidden") {
         stopLiveLocation(false);
-        setMessage("Live location sharing stopped because this page is no longer visible. Start again when you return.");
+        stopPresenceSharing(true);
+        setMessage("Location sharing stopped because this page is no longer visible. Enable location sharing again when you return.");
       }
     };
     document.addEventListener("visibilitychange", stopWhenHidden);
     return () => document.removeEventListener("visibilitychange", stopWhenHidden);
-  }, [stopLiveLocation]);
+  }, [stopLiveLocation, stopPresenceSharing]);
 
   useEffect(() => {
     return () => {
       if (locationWatchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(locationWatchIdRef.current);
       }
+      if (presenceWatchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(presenceWatchIdRef.current);
+      }
+      const coordinates = lastKnownCoordsRef.current;
+      if (presenceSharingRef.current && coordinates) {
+        void Promise.resolve(supabase.rpc("set_driver_presence", {
+          p_latitude: coordinates.latitude,
+          p_longitude: coordinates.longitude,
+          p_destination_latitude: null,
+          p_destination_longitude: null,
+          p_is_online: false,
+        })).catch(() => undefined);
+      }
       locationWatchIdRef.current = null;
+      presenceWatchIdRef.current = null;
+      presenceSharingRef.current = false;
       sharingBookingIdRef.current = null;
     };
-  }, []);
+  }, [supabase]);
 
   async function runAction(key: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(key);
@@ -146,9 +257,17 @@ export function DriverWorkspace({
 
   async function changeAvailability(value: boolean) {
     const ok = await runAction("availability", () => supabase.rpc("set_driver_availability", { p_is_available: value }));
-    if (ok) {
-      setAvailable(value);
-      if (!value) stopLiveLocation(false);
+    if (!ok) return;
+
+    setAvailable(value);
+    if (value) {
+      if (!startPresenceSharing()) {
+        await supabase.rpc("set_driver_availability", { p_is_available: false });
+        setAvailable(false);
+      }
+    } else {
+      stopPresenceSharing(false);
+      stopLiveLocation(false);
     }
   }
 
@@ -250,9 +369,14 @@ export function DriverWorkspace({
           </div>
           {verified && (
             <button type="button" disabled={busy === "availability"}
-              onClick={() => void changeAvailability(!available)}
-              className={`min-h-11 rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 ${available ? "bg-emerald-700 hover:bg-emerald-800" : "bg-slate-800 hover:bg-slate-900"}`}>
-              {busy === "availability" ? "Updating…" : available ? "Go offline" : "Go available"}
+              onClick={() => {
+                if (!available) void changeAvailability(true);
+                else if (!presenceSharing) {
+                  if (!startPresenceSharing()) setAvailable(false);
+                } else void changeAvailability(false);
+              }}
+              className={`min-h-11 rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 ${available && presenceSharing ? "bg-emerald-700 hover:bg-emerald-800" : "bg-slate-800 hover:bg-slate-900"}`}>
+              {busy === "availability" ? "Updating…" : available ? presenceSharing ? "Go offline" : "Enable location sharing" : "Go available"}
             </button>
           )}
         </div>
