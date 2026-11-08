@@ -71,7 +71,7 @@ export function DriverWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function runAction(key: string, action: () => Promise<{ error: { message: string } | null }>) {
+  async function runAction(key: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(key);
     setError(null);
     setMessage(null);
