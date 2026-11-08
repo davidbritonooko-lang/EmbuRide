@@ -72,6 +72,7 @@ export function DriverWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [sharingBookingId, setSharingBookingId] = useState<string | null>(null);
   const [presenceSharing, setPresenceSharing] = useState(false);
+  const [presenceReady, setPresenceReady] = useState(false);
   const locationWatchIdRef = useRef<number | null>(null);
   const sharingBookingIdRef = useRef<string | null>(null);
   const lastLocationSentAtRef = useRef(0);
@@ -86,6 +87,7 @@ export function DriverWorkspace({
     }
     presenceWatchIdRef.current = null;
     setPresenceSharing(false);
+    setPresenceReady(false);
 
     if (markUnavailable) {
       void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }))
@@ -109,6 +111,7 @@ export function DriverWorkspace({
 
     presenceSharingRef.current = true;
     setPresenceSharing(true);
+    setPresenceReady(false);
     lastPresenceSentAtRef.current = 0;
 
     try {
@@ -133,6 +136,8 @@ export function DriverWorkspace({
               void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
               setAvailable(false);
               setError("Your location could not be shared, so driver availability was switched off.");
+            } else {
+              setPresenceReady(true);
             }
           }).catch(() => {
             if (!presenceSharingRef.current) return;
@@ -472,11 +477,13 @@ export function DriverWorkspace({
                         {next === "completed" ? "Complete trip" : `Mark ${next.replaceAll("_", " ")}`}
                       </button>
                       <button type="button"
+                        disabled={sharingBookingId !== booking.id && !presenceReady}
                         onClick={() => sharingBookingId === booking.id ? stopLiveLocation() : startLiveLocation(booking.id)}
-                        className={`min-h-10 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-60 ${sharingBookingId === booking.id ? "border-rose-300 text-rose-800 hover:bg-rose-50" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
+                        title={!presenceReady && sharingBookingId !== booking.id ? "Enable driver location sharing first" : undefined}
+                        className={`min-h-10 rounded-lg border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${sharingBookingId === booking.id ? "border-rose-300 text-rose-800 hover:bg-rose-50" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
                         {sharingBookingId === booking.id
                           ? busy === `location-${booking.id}` ? "Waiting for location…" : "Stop live sharing"
-                          : "Start live location"}
+                          : presenceReady ? "Start live location" : "Enable driver location first"}
                       </button>
                     </div>
                   )}
