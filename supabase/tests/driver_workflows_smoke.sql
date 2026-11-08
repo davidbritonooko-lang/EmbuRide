@@ -25,6 +25,8 @@ set verification_status='verified', verified_at=now()
 where user_id='77777777-7777-4777-8777-777777777777';
 update public.vehicles set vehicle_status='approved'
 where driver_id='77777777-7777-4777-8777-777777777777';
+insert into public.vehicles(driver_id,make,model,registration_number,color,seat_capacity,vehicle_status)
+values ('77777777-7777-4777-8777-777777777777','Nissan','Note','KXX778X','Blue',5,'approved');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','77777777-7777-4777-8777-777777777777',true);
@@ -48,6 +50,12 @@ begin
   end if;
   if v_approx_lat is null then
     raise exception 'Shared-ride search did not return approximate route coordinates';
+  end if;
+  select count(*) into v_nearby_count
+  from public.search_nearby_drivers(-0.5300,37.4500,2000,20)
+  where driver_id='77777777-7777-4777-8777-777777777777';
+  if v_nearby_count <> 1 then
+    raise exception 'Nearby driver search returned % rows for a driver with multiple approved vehicles',v_nearby_count;
   end if;
 
   begin
