@@ -19,9 +19,11 @@ export function AuthForm({ mode }: Props) {
         ? "The sign-in link could not be verified. Please try again."
         : error === "profile"
           ? "Your account profile is not ready. Contact support."
-          : error
-            ? error
-            : null;
+          : error === "auth"
+            ? "Unable to sign in with those credentials."
+            : error === "signup"
+              ? "Unable to create the account. Check the details and try again."
+              : null;
 
   return (
     <form action={isSignup ? signUpAction : signInAction} className="mt-8 space-y-5">
