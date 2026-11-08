@@ -1,4 +1,4 @@
--- 023: Require adult eligibility for driver applications and verification.
+-- 022: Require adult eligibility for driver applications and verification.
 create or replace function public.submit_driver_application(
   p_phone text,
   p_date_of_birth date,
