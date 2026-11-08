@@ -75,6 +75,58 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function private.handle_new_user();
 
+
+-- Driver presence is written only through this authenticated, owner-scoped RPC.
+create or replace function public.set_driver_presence(
+  p_latitude double precision,
+  p_longitude double precision,
+  p_destination_latitude double precision default null,
+  p_destination_longitude double precision default null,
+  p_is_online boolean default true
+)
+returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public, extensions
+as $
+declare v_user uuid := (select auth.uid());
+begin
+  if v_user is null then raise exception 'Authentication required' using errcode='42501'; end if;
+  if p_latitude not between -90 and 90 or p_longitude not between -180 and 180 then
+    raise exception 'Invalid current coordinates';
+  end if;
+  if (p_destination_latitude is null) <> (p_destination_longitude is null)
+     or (p_destination_latitude is not null and p_destination_latitude not between -90 and 90)
+     or (p_destination_longitude is not null and p_destination_longitude not between -180 and 180) then
+    raise exception 'Invalid destination coordinates';
+  end if;
+  if not exists (
+    select 1 from public.driver_profiles d
+    join public.profiles p on p.id=d.user_id
+    where d.user_id=v_user and d.verification_status='verified'
+      and d.is_available and p.account_status='active'
+  ) then raise exception 'Verified, available driver profile required' using errcode='42501'; end if;
+
+  insert into public.driver_presence(
+    driver_id,current_location,destination_location,last_seen_at,is_online
+  ) values (
+    v_user,
+    extensions.st_setsrid(extensions.st_makepoint(p_longitude,p_latitude),4326)::extensions.geography,
+    case when p_destination_latitude is null then null
+      else extensions.st_setsrid(extensions.st_makepoint(p_destination_longitude,p_destination_latitude),4326)::extensions.geography end,
+    now(),p_is_online
+  )
+  on conflict (driver_id) do update set
+    current_location=excluded.current_location,
+    destination_location=excluded.destination_location,
+    last_seen_at=excluded.last_seen_at,
+    is_online=excluded.is_online,
+    updated_at=now();
+end;
+$;
+revoke all on function public.set_driver_presence(double precision,double precision,double precision,double precision,boolean) from public, anon;
+grant execute on function public.set_driver_presence(double precision,double precision,double precision,double precision,boolean) to authenticated;
+
 -- Safe discovery: returns no exact driver coordinates, phone numbers, or DOB.
 create or replace function public.search_nearby_drivers(
   p_latitude double precision,
