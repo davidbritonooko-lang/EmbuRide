@@ -19,6 +19,29 @@ export default async function PassengerBookingsPage() {
     ids.length > 0 ? supabase.from("payment_records").select("id,booking_id,amount,payment_method,payment_status,reference,created_at").in("booking_id",ids).order("created_at",{ascending:false}) : Promise.resolve({data:[]}),
   ]);
 
+  const activeBookingIds = (bookings ?? [])
+    .filter((booking) => ["confirmed", "driver_arriving", "picked_up", "in_progress"].includes(booking.booking_status))
+    .map((booking) => booking.id);
+  const tripLocationResults = await Promise.all(
+    activeBookingIds.map((bookingId) =>
+      supabase.rpc("get_latest_trip_location", { p_booking_id: bookingId })
+    )
+  );
+  const tripLocations = Object.fromEntries(
+    tripLocationResults.flatMap(({ data }) => {
+      const location = data?.[0];
+      return location
+        ? [[location.booking_id, {
+            latitude: Number(location.latitude),
+            longitude: Number(location.longitude),
+            recordedAt: location.recorded_at,
+          }]]
+        : [];
+    })
+  );
+
+
+
   const driverNames = Object.fromEntries((driverResult.data ?? []).map((profile) => [profile.id,profile.full_name]));
 
   return (
@@ -27,7 +50,7 @@ export default async function PassengerBookingsPage() {
         <div><p className="text-sm font-medium text-teal-800">Passenger workspace</p><h1 className="mt-2 text-2xl font-bold text-slate-950 sm:text-3xl">My bookings</h1><p className="mt-2 text-sm text-slate-600">Track requests, negotiate fares and review trip activity.</p></div>
         <Link href="/passenger" className="text-sm font-semibold text-teal-800 underline underline-offset-4">Find another ride</Link>
       </section>
-      <PassengerBookings userId={user.id} bookings={bookings ?? []} driverNames={driverNames} fareOffers={fareResult.data ?? []} events={eventResult.data ?? []} payments={paymentResult.data ?? []} />
+      <PassengerBookings userId={user.id} bookings={bookings ?? []} tripLocations={tripLocations} driverNames={driverNames} fareOffers={fareResult.data ?? []} events={eventResult.data ?? []} payments={paymentResult.data ?? []} />
     </div>
   );
 }
