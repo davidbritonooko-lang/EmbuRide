@@ -77,6 +77,7 @@ export function DriverWorkspace({
   const sharingBookingIdRef = useRef<string | null>(null);
   const lastLocationSentAtRef = useRef(0);
   const presenceWatchIdRef = useRef<number | null>(null);
+  const presenceHeartbeatRef = useRef<number | null>(null);
   const presenceSharingRef = useRef(false);
   const lastPresenceSentAtRef = useRef(0);
 
@@ -86,6 +87,10 @@ export function DriverWorkspace({
       navigator.geolocation.clearWatch(presenceWatchIdRef.current);
     }
     presenceWatchIdRef.current = null;
+    if (presenceHeartbeatRef.current !== null) {
+      window.clearInterval(presenceHeartbeatRef.current);
+      presenceHeartbeatRef.current = null;
+    }
     setPresenceSharing(false);
     setPresenceReady(false);
 
@@ -119,33 +124,40 @@ export function DriverWorkspace({
         ({ coords }) => {
           if (!presenceSharingRef.current) return;
           const coordinates = { latitude: coords.latitude, longitude: coords.longitude };
-          const now = Date.now();
-          if (now - lastPresenceSentAtRef.current < 30000) return;
-          lastPresenceSentAtRef.current = now;
-
-          void Promise.resolve(supabase.rpc("set_driver_presence", {
-            p_latitude: coordinates.latitude,
-            p_longitude: coordinates.longitude,
-            p_destination_latitude: null,
-            p_destination_longitude: null,
-            p_is_online: true,
-          })).then(({ error: presenceError }) => {
+          lastKnownCoordsRef.current = coordinates;
+          const publish = () => {
             if (!presenceSharingRef.current) return;
-            if (presenceError) {
+            const now = Date.now();
+            if (now - lastPresenceSentAtRef.current < 30000) return;
+            lastPresenceSentAtRef.current = now;
+            void Promise.resolve(supabase.rpc("set_driver_presence", {
+              p_latitude: coordinates.latitude,
+              p_longitude: coordinates.longitude,
+              p_destination_latitude: null,
+              p_destination_longitude: null,
+              p_is_online: true,
+            })).then(({ error: presenceError }) => {
+              if (!presenceSharingRef.current) return;
+              if (presenceError) {
+                stopPresenceSharing(false);
+                void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
+                setAvailable(false);
+                setError("Your location could not be shared, so driver availability was switched off.");
+              } else {
+                setPresenceReady(true);
+              }
+            }).catch(() => {
+              if (!presenceSharingRef.current) return;
               stopPresenceSharing(false);
               void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
               setAvailable(false);
-              setError("Your location could not be shared, so driver availability was switched off.");
-            } else {
-              setPresenceReady(true);
-            }
-          }).catch(() => {
-            if (!presenceSharingRef.current) return;
-            stopPresenceSharing(false);
-            void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }));
-            setAvailable(false);
-            setError("The connection failed while sharing your location. Driver availability was switched off.");
-          });
+              setError("The connection failed while sharing your location. Driver availability was switched off.");
+            });
+          };
+          publish();
+          if (presenceHeartbeatRef.current === null) {
+            presenceHeartbeatRef.current = window.setInterval(publish, 30000);
+          }
         },
         () => {
           if (!presenceSharingRef.current) return;
@@ -225,6 +237,9 @@ export function DriverWorkspace({
       if (presenceWatchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(presenceWatchIdRef.current);
       }
+      if (presenceHeartbeatRef.current !== null) {
+        window.clearInterval(presenceHeartbeatRef.current);
+      }
       if (available) {
         void Promise.resolve(supabase.rpc("set_driver_availability", { p_is_available: false }))
           .catch(() => undefined);
@@ -296,6 +311,10 @@ export function DriverWorkspace({
   }
 
   function startLiveLocation(bookingId: string) {
+    if (!presenceReady) {
+      setError("Enable driver location sharing before starting trip location updates.");
+      return;
+    }
     if (!navigator.geolocation) {
       setError("This browser does not support location sharing.");
       return;
