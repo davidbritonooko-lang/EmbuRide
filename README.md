@@ -32,8 +32,8 @@ The application includes email/password authentication flows, database-backed ro
 
 ### Maps and location selection
 
-- Passenger route search uses an interactive Leaflet map with OpenStreetMap tiles.
-- Pickup and destination can be entered as Embu County place names or selected directly on the map.
+- Passenger route search and driver shared-ride publishing use an interactive Leaflet map with OpenStreetMap tiles.
+- Pickup, starting point, and destination can be entered as Embu County place names or selected directly on the map.
 - Browser location permission can populate the pickup point; location access is user-initiated.
 - Map-selected points are reverse-geocoded with OpenStreetMap Nominatim when available. Coordinates remain usable if a place label cannot be resolved.
 - Nearby-driver and shared-ride searches use the selected coordinates through protected Supabase RPCs. Exact driver presence coordinates are not exposed to passengers.
