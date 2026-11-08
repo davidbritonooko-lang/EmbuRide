@@ -40,7 +40,7 @@ select public.create_shared_ride_offer(
 );
 
 do $test$
-declare v_count integer; v_approx_lat double precision;
+declare v_count integer; v_approx_lat double precision; v_nearby_count integer;
 begin
   select count(*), max(origin_latitude) into v_count,v_approx_lat
   from public.search_shared_rides(-0.5300,37.4500,-0.5400,37.4600,2000,now(),20);
